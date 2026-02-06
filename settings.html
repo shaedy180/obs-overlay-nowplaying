@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Now Playing — Settings</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e14;
+    --surface: #18181f;
+    --surface2: #1e1e28;
+    --border: rgba(255,255,255,.06);
+    --text: #e8e8ee;
+    --text2: rgba(255,255,255,.45);
+    --accent: #8264f0;
+    --accent-dim: rgba(130,100,240,.15);
+    --radius: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ──────────────────────────────────────────────────── */
+  .app {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  header {
+    margin-bottom: 32px;
+  }
+
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  header p {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  /* ── Preview iframe ──────────────────────────────────────────── */
+  .preview-section {
+    margin-bottom: 28px;
+  }
+
+  .preview-frame {
+    width: 100%;
+    height: 130px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: #0a0a10;
+    overflow: hidden;
+  }
+
+  .preview-frame iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
+  }
+
+  .preview-label {
+    margin-top: 8px;
+    font-size: 11px;
+    color: var(--text2);
+    text-align: center;
+  }
+
+  /* ── Section cards ───────────────────────────────────────────── */
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text2);
+    margin-bottom: 16px;
+  }
+
+  /* ── Form rows ───────────────────────────────────────────────── */
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .row:last-child { border-bottom: none; }
+
+  .row-label {
+    font-size: 13.5px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .row-desc {
+    font-size: 11.5px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .row-left {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .row-right {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ── Inputs ──────────────────────────────────────────────────── */
+  input[type="number"],
+  input[type="text"] {
+    width: 100px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  input[type="text"].wide { width: 220px; }
+  input[type="number"]:focus,
+  input[type="text"]:focus { border-color: var(--accent); }
+
+  input[type="color"] {
+    width: 36px;
+    height: 30px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface2);
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  input[type="range"] {
+    width: 120px;
+    accent-color: var(--accent);
+  }
+
+  .range-val {
+    font-size: 12px;
+    color: var(--text2);
+    width: 36px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Select ──────────────────────────────────────────────────── */
+  select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    cursor: pointer;
+    transition: border-color .2s;
+  }
+
+  select:focus { border-color: var(--accent); }
+
+  /* ── Toggle switch ───────────────────────────────────────────── */
+  .toggle {
+    position: relative;
+    width: 42px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+
+  .toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 3px; left: 3px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--text2);
+    transition: transform .2s, background .2s;
+  }
+
+  .toggle input:checked + .toggle-track {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .toggle input:checked + .toggle-track::after {
+    transform: translateX(18px);
+    background: #fff;
+  }
+
+  /* ── Buttons ─────────────────────────────────────────────────── */
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn {
+    padding: 10px 22px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 13.5px;
+    font-weight: 550;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, transform .1s;
+  }
+
+  .btn:active { transform: scale(.97); }
+
+  .btn-primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  .btn-primary:hover { filter: brightness(1.1); }
+  .btn:hover { border-color: rgba(255,255,255,.12); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    padding: 10px 22px;
+    background: var(--accent);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 550;
+    opacity: 0;
+    transition: opacity .25s, transform .25s;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  .toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <h1>Now Playing — Settings</h1>
+    <p>Adjust the overlay appearance. Changes are saved to settings.json and auto-applied to the overlay.</p>
+  </header>
+
+  <!-- ── Live preview ──────────────────────────────────────────── -->
+  <div class="preview-section">
+    <div class="preview-frame">
+      <iframe id="previewFrame" src="overlay.html?debug&preview"></iframe>
+    </div>
+    <div class="preview-label">Live preview — changes apply in real time</div>
+  </div>
+
+  <!-- ── Layout ────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Layout</div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Overlay width</div>
+        <div class="row-desc">Width of the pill in pixels</div>
+      </div>
+      <div class="row-right">
+        <input type="number" id="overlayWidth" min="280" max="900" step="10" />
+        <span class="range-val">px</span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Corner radius</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="pillRadius" min="0" max="40" step="1" />
+        <span class="range-val" data-for="pillRadius"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Album art size</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="artSize" min="32" max="100" step="2" />
+        <span class="range-val" data-for="artSize"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Art corner radius</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="artRadius" min="0" max="50" step="1" />
+        <span class="range-val" data-for="artRadius"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Colors ────────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Colors</div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Background</div>
+        <div class="row-desc">Pill background (supports rgba for transparency)</div>
+      </div>
+      <div class="row-right">
+        <input type="text" id="pillBackground" class="wide" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Blur strength</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="blurStrength" min="0" max="60" step="2" />
+        <span class="range-val" data-for="blurStrength"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Border color</div>
+        <div class="row-desc">Subtle border (rgba recommended)</div>
+      </div>
+      <div class="row-right">
+        <input type="text" id="borderColor" class="wide" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Text color</div>
+      </div>
+      <div class="row-right">
+        <input type="color" id="textColor" />
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Accent color mode</div>
+        <div class="row-desc">Auto extracts the dominant colour from album art</div>
+      </div>
+      <div class="row-right">
+        <select id="accentColorMode">
+          <option value="auto">Auto (from cover art)</option>
+          <option value="fixed">Fixed color</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="row" id="fixedColorRow">
+      <div class="row-left">
+        <div class="row-label">Fixed accent color</div>
+      </div>
+      <div class="row-right">
+        <input type="color" id="accentColorFixed" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Typography ────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Typography</div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Title size</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="titleSize" min="10" max="32" step="0.5" />
+        <span class="range-val" data-for="titleSize"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Artist size</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="artistSize" min="9" max="24" step="0.5" />
+        <span class="range-val" data-for="artistSize"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Artist opacity</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="artistOpacity" min="0.1" max="1" step="0.05" />
+        <span class="range-val" data-for="artistOpacity"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Marquee speed</div>
+        <div class="row-desc">Pixels per second for scrolling long titles</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="marqueeSpeed" min="10" max="80" step="2" />
+        <span class="range-val" data-for="marqueeSpeed"></span>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Font family</div>
+      </div>
+      <div class="row-right">
+        <input type="text" id="fontFamily" class="wide" />
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Visibility ────────────────────────────────────────────── -->
+  <div class="section">
+    <div class="section-title">Visibility</div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Show album art</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="showAlbumArt" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Show equalizer / pause icon</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="showEqualizer" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Show artist</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="showArtist" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Show album in artist line</div>
+        <div class="row-desc">Appends "Artist -- Album" when available</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="showAlbumInArtist" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Hide when paused</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="hideWhenPaused" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Hide when nothing playing</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="hideWhenIdle" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- ── Actions ───────────────────────────────────────────────── -->
+  <div class="actions">
+    <button class="btn btn-primary" id="saveBtn">Save settings</button>
+    <button class="btn" id="resetBtn">Reset to defaults</button>
+  </div>
+</div>
+
+<div class="toast" id="toast">Settings saved</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const DEFAULTS = {
+    overlayWidth: 440,
+    pillRadius: 18,
+    pillBackground: "rgba(10, 10, 18, 0.58)",
+    blurStrength: 28,
+    borderColor: "rgba(255, 255, 255, 0.07)",
+    textColor: "#ffffff",
+    artistOpacity: 0.50,
+    titleSize: 16.5,
+    artistSize: 12.5,
+    artSize: 60,
+    artRadius: 12,
+    accentColorMode: "auto",
+    accentColorFixed: "#8264f0",
+    showAlbumArt: true,
+    showEqualizer: true,
+    showArtist: true,
+    showAlbumInArtist: true,
+    hideWhenPaused: false,
+    hideWhenIdle: true,
+    marqueeSpeed: 28,
+    fontFamily: "'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif"
+  };
+
+  const FIELDS = Object.keys(DEFAULTS);
+  const BOOLEANS = FIELDS.filter(k => typeof DEFAULTS[k] === "boolean");
+  const NUMBERS = FIELDS.filter(k => typeof DEFAULTS[k] === "number");
+
+  let settings = { ...DEFAULTS };
+
+  /* ── DOM helpers ─────────────────────────────────────────────── */
+  const $ = id => document.getElementById(id);
+
+  function populateUI(s) {
+    for (const key of FIELDS) {
+      const el = $(key);
+      if (!el) continue;
+      if (BOOLEANS.includes(key)) {
+        el.checked = !!s[key];
+      } else if (el.type === "range" || el.type === "number") {
+        el.value = s[key];
+        const valEl = document.querySelector(`[data-for="${key}"]`);
+        if (valEl) valEl.textContent = s[key];
+      } else {
+        el.value = s[key];
+      }
+    }
+    updateConditionalVisibility(s);
+  }
+
+  function readUI() {
+    const out = {};
+    for (const key of FIELDS) {
+      const el = $(key);
+      if (!el) { out[key] = settings[key]; continue; }
+      if (BOOLEANS.includes(key)) {
+        out[key] = el.checked;
+      } else if (NUMBERS.includes(key)) {
+        out[key] = parseFloat(el.value);
+      } else {
+        out[key] = el.value;
+      }
+    }
+    return out;
+  }
+
+  function updateConditionalVisibility(s) {
+    $("fixedColorRow").style.display = s.accentColorMode === "fixed" ? "" : "none";
+  }
+
+  /* ── Load settings from server ───────────────────────────────── */
+  async function loadSettings() {
+    try {
+      const res = await fetch("settings.json?_=" + Date.now(), { cache: "no-store" });
+      if (res.ok) {
+        const saved = await res.json();
+        settings = { ...DEFAULTS, ...saved };
+      }
+    } catch { /* use defaults */ }
+    populateUI(settings);
+  }
+
+  /* ── Save settings via POST ──────────────────────────────────── */
+  async function saveSettings(data) {
+    try {
+      const res = await fetch("/save-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data, null, 2)
+      });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }
+
+  function showToast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2000);
+  }
+
+  /* ── Live preview on every change ────────────────────────────── */
+  function liveUpdate() {
+    const current = readUI();
+    updateConditionalVisibility(current);
+
+    // Push to preview iframe
+    const iframe = $("previewFrame");
+    if (iframe && iframe.contentWindow) {
+      iframe.contentWindow.postMessage({ type: "settings-update", settings: current }, "*");
+    }
+  }
+
+  /* ── Wire up all inputs ──────────────────────────────────────── */
+  function wireInputs() {
+    for (const key of FIELDS) {
+      const el = $(key);
+      if (!el) continue;
+      const ev = (el.type === "range" || el.type === "checkbox") ? "input" : "change";
+      el.addEventListener(ev, () => {
+        // Update range value displays
+        if (el.type === "range") {
+          const valEl = document.querySelector(`[data-for="${key}"]`);
+          if (valEl) valEl.textContent = el.value;
+        }
+        liveUpdate();
+      });
+    }
+  }
+
+  /* ── Save / Reset buttons ────────────────────────────────────── */
+  $("saveBtn").addEventListener("click", async () => {
+    const data = readUI();
+    const ok = await saveSettings(data);
+    if (ok) {
+      settings = data;
+      showToast("Settings saved");
+    } else {
+      showToast("Failed to save — is the server running?");
+    }
+  });
+
+  $("resetBtn").addEventListener("click", () => {
+    settings = { ...DEFAULTS };
+    populateUI(settings);
+    liveUpdate();
+    showToast("Reset to defaults (click Save to persist)");
+  });
+
+  /* ── Init ────────────────────────────────────────────────────── */
+  wireInputs();
+  loadSettings();
+})();
+</script>
+</body>
+</html>

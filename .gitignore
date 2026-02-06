@@ -1,0 +1,8 @@
+venv/
+__pycache__/
+*.pyc
+nowplaying.json
+nowplaying.json.tmp
+cover.jpg
+settings.json.tmp
+.vscode/

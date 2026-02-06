@@ -1,0 +1,515 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Now Playing</title>
+<style>
+  /* ── Registered custom properties (enables smooth colour transitions) ── */
+  @property --ac-r { syntax: '<number>'; inherits: true; initial-value: 130; }
+  @property --ac-g { syntax: '<number>'; inherits: true; initial-value: 100; }
+  @property --ac-b { syntax: '<number>'; inherits: true; initial-value: 240; }
+
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --ac-r: 130; --ac-g: 100; --ac-b: 240;
+    --accent:     rgb(var(--ac-r), var(--ac-g), var(--ac-b));
+    --accent-glow: rgba(var(--ac-r), var(--ac-g), var(--ac-b), 0.30);
+    --accent-dim:  rgba(var(--ac-r), var(--ac-g), var(--ac-b), 0.12);
+    transition: --ac-r .9s ease, --ac-g .9s ease, --ac-b .9s ease;
+  }
+
+  body {
+    margin: 0;
+    padding: 16px;
+    background: transparent;
+    font-family: var(--font-family, 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif);
+    color: var(--text-color, #fff);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Debug mode (add ?debug to URL) ── */
+  body.debug {
+    background: #0e0e18;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px;
+  }
+
+  /* ── Glass pill container ─────────────────────────────────────── */
+  .overlay {
+    width: var(--overlay-width, 440px);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 20px 14px 14px;
+    border-radius: var(--pill-radius, 18px);
+    background: var(--pill-bg, rgba(10, 10, 18, 0.58));
+    backdrop-filter: blur(var(--blur, 28px)) saturate(1.6);
+    -webkit-backdrop-filter: blur(var(--blur, 28px)) saturate(1.6);
+    border: 1px solid var(--border-color, rgba(255, 255, 255, 0.07));
+    box-shadow:
+      0 0 0 0.5px rgba(0,0,0,.4),
+      0 8px 32px rgba(0,0,0,.40),
+      0 2px 8px rgba(0,0,0,.25),
+      inset 0 0.5px 0 rgba(255,255,255,.06),
+      0 0 30px -4px var(--accent-dim);
+    transition:
+      opacity .5s cubic-bezier(.22,1,.36,1),
+      transform .5s cubic-bezier(.22,1,.36,1),
+      box-shadow .8s ease;
+    opacity: 0;
+    transform: translateY(10px) scale(.98);
+    will-change: opacity, transform;
+  }
+
+  .overlay.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* ── Album art ────────────────────────────────────────────────── */
+  .art-wrap {
+    flex-shrink: 0;
+    width: var(--art-size, 60px);
+    height: var(--art-size, 60px);
+    border-radius: var(--art-radius, 12px);
+    overflow: hidden;
+    background: rgba(255,255,255,.04);
+    box-shadow:
+      0 2px 10px rgba(0,0,0,.30),
+      0 0 20px -2px var(--accent-dim);
+    position: relative;
+    transition: box-shadow .8s ease;
+  }
+
+  .art-wrap.hidden { display: none; }
+
+  .art-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .art-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 100%);
+  }
+
+  .art-placeholder svg {
+    width: 26px;
+    height: 26px;
+    fill: rgba(255,255,255,.2);
+  }
+
+  /* ── Meta text ────────────────────────────────────────────────── */
+  .meta {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .meta-inner {
+    transition: opacity .30s ease, transform .30s ease;
+  }
+
+  /* Title with optional marquee */
+  .title-wrap {
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 32px), transparent 100%);
+            mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 32px), transparent 100%);
+  }
+
+  .title {
+    font-size: var(--title-size, 16.5px);
+    font-weight: 650;
+    line-height: 1.25;
+    white-space: nowrap;
+    display: inline-block;
+    letter-spacing: -.01em;
+  }
+
+  .title.scrolling {
+    animation: marquee var(--marquee-dur, 10s) linear infinite;
+    padding-right: 80px;
+  }
+
+  .artist {
+    margin-top: 4px;
+    font-size: var(--artist-size, 12.5px);
+    font-weight: 420;
+    line-height: 1.25;
+    opacity: var(--artist-opacity, .50);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    letter-spacing: .01em;
+  }
+
+  .artist.hidden { display: none; }
+
+  /* ── Status indicator (EQ bars + pause icon) ──────────────────── */
+  .status-indicator {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 24px;
+    margin-left: auto;
+    padding-left: 4px;
+  }
+
+  .status-indicator.hidden { display: none; }
+
+  /* Equaliser bars (visible when playing) */
+  .eq {
+    display: flex;
+    align-items: flex-end;
+    gap: 2.5px;
+    height: 20px;
+  }
+
+  .eq-bar {
+    width: 3px;
+    border-radius: 1.5px;
+    background: var(--accent);
+    transition: background .8s ease;
+  }
+
+  .eq-bar:nth-child(1) { height: 30%; animation: eq-a .48s ease-in-out infinite alternate; }
+  .eq-bar:nth-child(2) { height: 60%; animation: eq-b .56s ease-in-out infinite alternate; }
+  .eq-bar:nth-child(3) { height: 40%; animation: eq-c .52s ease-in-out infinite alternate; }
+  .eq-bar:nth-child(4) { height: 55%; animation: eq-d .60s ease-in-out infinite alternate; }
+
+  @keyframes eq-a { to { height: 85%; } }
+  @keyframes eq-b { to { height: 35%; } }
+  @keyframes eq-c { to { height: 95%; } }
+  @keyframes eq-d { to { height: 45%; } }
+
+  /* Pause icon (visible when paused) */
+  .pause-icon {
+    font-size: 18px;
+    line-height: 1;
+    opacity: .65;
+    display: none;
+    user-select: none;
+    filter: grayscale(.15);
+  }
+
+  /* Idle bars (nothing playing) */
+  .overlay.idle .eq { opacity: .25; }
+  .overlay.idle .eq-bar { animation: none; height: 12%; }
+  .overlay.idle .pause-icon { display: none; }
+
+  /* Paused state: hide EQ, show pause icon */
+  .overlay.paused .eq { display: none; }
+  .overlay.paused .pause-icon { display: block; }
+
+  /* ── Marquee keyframes ────────────────────────────────────────── */
+  @keyframes marquee {
+    0%, 12%   { transform: translateX(0); }
+    88%, 100% { transform: translateX(var(--marquee-off)); }
+  }
+
+  /* ── Hidden helper canvas ─────────────────────────────────────── */
+  #colorCanvas { display: none; }
+</style>
+</head>
+
+<body>
+<!-- ── Overlay ────────────────────────────────────────────────────── -->
+<div id="overlay" class="overlay idle">
+  <div class="art-wrap" id="artWrap">
+    <img id="art" alt="" style="display:none" crossorigin="anonymous" />
+    <div id="artPH" class="art-placeholder">
+      <svg viewBox="0 0 24 24"><path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/></svg>
+    </div>
+  </div>
+  <div class="meta">
+    <div class="meta-inner" id="inner">
+      <div class="title-wrap" id="titleWrap">
+        <span id="title" class="title">--</span>
+      </div>
+      <div id="artist" class="artist">--</div>
+    </div>
+  </div>
+  <div class="status-indicator" id="statusIndicator">
+    <div class="eq" id="eqBars">
+      <div class="eq-bar"></div>
+      <div class="eq-bar"></div>
+      <div class="eq-bar"></div>
+      <div class="eq-bar"></div>
+    </div>
+    <div class="pause-icon" id="pauseIcon">&#x23F8;&#xFE0F;</div>
+  </div>
+</div>
+
+<canvas id="colorCanvas"></canvas>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ── Debug background ─────────────────────────────────────────── */
+  const isDebug = location.search.includes("debug");
+  if (isDebug) document.body.classList.add("debug");
+
+  /* ── DOM refs ──────────────────────────────────────────────────── */
+  const $ = id => document.getElementById(id);
+  const overlay   = $("overlay");
+  const titleEl   = $("title");
+  const titleW    = $("titleWrap");
+  const artistEl  = $("artist");
+  const artImg    = $("art");
+  const artPH     = $("artPH");
+  const artWrap   = $("artWrap");
+  const inner     = $("inner");
+  const statusInd = $("statusIndicator");
+  const cvs       = $("colorCanvas");
+  const ctx       = cvs.getContext("2d", { willReadFrequently: true });
+
+  const POLL = 500;
+  const DEFAULT_C = { r: 130, g: 100, b: 240 };
+  let trackKey = "";
+  let cfg = null;
+
+  /* ── Settings loader ───────────────────────────────────────────── */
+  async function loadSettings() {
+    try {
+      const res = await fetch("settings.json?_=" + Date.now(), { cache: "no-store" });
+      if (res.ok) cfg = await res.json();
+    } catch { /* keep previous */ }
+  }
+
+  function applySettings() {
+    if (!cfg) return;
+    const s = document.documentElement.style;
+
+    s.setProperty("--overlay-width",  cfg.overlayWidth + "px");
+    s.setProperty("--pill-radius",    cfg.pillRadius + "px");
+    s.setProperty("--pill-bg",        cfg.pillBackground);
+    s.setProperty("--blur",           cfg.blurStrength + "px");
+    s.setProperty("--border-color",   cfg.borderColor);
+    s.setProperty("--text-color",     cfg.textColor);
+    s.setProperty("--artist-opacity", cfg.artistOpacity);
+    s.setProperty("--title-size",     cfg.titleSize + "px");
+    s.setProperty("--artist-size",    cfg.artistSize + "px");
+    s.setProperty("--art-size",       cfg.artSize + "px");
+    s.setProperty("--art-radius",     cfg.artRadius + "px");
+    document.body.style.fontFamily = cfg.fontFamily || "";
+
+    // Visibility toggles
+    artWrap.classList.toggle("hidden", !cfg.showAlbumArt);
+    statusInd.classList.toggle("hidden", !cfg.showEqualizer);
+    artistEl.classList.toggle("hidden", !cfg.showArtist);
+
+    // Fixed accent colour
+    if (cfg.accentColorMode === "fixed" && cfg.accentColorFixed) {
+      const fc = hexToRgb(cfg.accentColorFixed);
+      if (fc) applyAccent(fc);
+    }
+  }
+
+  /* ── Listen for live settings from the settings panel iframe ───── */
+  window.addEventListener("message", (e) => {
+    if (e.data && e.data.type === "settings-update") {
+      cfg = e.data.settings;
+      applySettings();
+      requestAnimationFrame(() => requestAnimationFrame(setupMarquee));
+    }
+  });
+
+  /* ── Colour helpers ────────────────────────────────────────────── */
+  function hexToRgb(hex) {
+    const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
+  }
+
+  function extractColor(img) {
+    const S = 32;
+    cvs.width = S; cvs.height = S;
+    try {
+      ctx.drawImage(img, 0, 0, S, S);
+      const { data } = ctx.getImageData(0, 0, S, S);
+      const buckets = Object.create(null);
+
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 128) continue;
+        const qr = (data[i]     >> 5) << 5;
+        const qg = (data[i + 1] >> 5) << 5;
+        const qb = (data[i + 2] >> 5) << 5;
+        const k  = (qr << 16) | (qg << 8) | qb;
+        if (!buckets[k]) buckets[k] = { r: 0, g: 0, b: 0, n: 0 };
+        const b = buckets[k];
+        b.r += data[i]; b.g += data[i + 1]; b.b += data[i + 2]; b.n++;
+      }
+
+      let best = null, bestS = -1;
+      for (const b of Object.values(buckets)) {
+        const r = b.r / b.n, g = b.g / b.n, bl = b.b / b.n;
+        const mx = Math.max(r, g, bl), mn = Math.min(r, g, bl);
+        const sat = mx === 0 ? 0 : (mx - mn) / mx;
+        const lum = (r + g + bl) / 3;
+        const sc = sat * 3 + (1 - Math.abs(lum - 120) / 128) + Math.log2(b.n + 1) * .4;
+        if (sc > bestS) { bestS = sc; best = { r: Math.round(r), g: Math.round(g), b: Math.round(bl) }; }
+      }
+      return best || DEFAULT_C;
+    } catch { return DEFAULT_C; }
+  }
+
+  function applyAccent(c) {
+    const s = document.documentElement.style;
+    s.setProperty("--ac-r", c.r);
+    s.setProperty("--ac-g", c.g);
+    s.setProperty("--ac-b", c.b);
+  }
+
+  /* ── Marquee setup ─────────────────────────────────────────────── */
+  function setupMarquee() {
+    const textW = titleEl.scrollWidth;
+    const boxW  = titleW.clientWidth;
+    const speed = (cfg && cfg.marqueeSpeed) || 28;
+    if (textW > boxW + 6) {
+      const off = -(textW - boxW + 50);
+      const dur = Math.max(6, (textW - boxW) / speed);
+      titleEl.style.setProperty("--marquee-off", off + "px");
+      titleEl.style.setProperty("--marquee-dur", dur + "s");
+      titleEl.classList.add("scrolling");
+    } else {
+      titleEl.classList.remove("scrolling");
+    }
+  }
+
+  /* ── Helpers ───────────────────────────────────────────────────── */
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  function setStatus(status) {
+    overlay.classList.remove("paused", "idle");
+    if (status.includes("paused"))  overlay.classList.add("paused");
+    else if (status === "none" || status === "closed" || status === "stopped")
+      overlay.classList.add("idle");
+  }
+
+  /* ── Main polling loop ─────────────────────────────────────────── */
+  let busy = false;
+  let settingsTick = 0;
+
+  async function tick() {
+    if (busy) return;
+    busy = true;
+    try {
+      // Reload settings every ~5 seconds
+      if (settingsTick++ % 10 === 0) {
+        await loadSettings();
+        applySettings();
+      }
+
+      const res = await fetch("nowplaying.json?_=" + Date.now(), { cache: "no-store" });
+      if (!res.ok) return;
+      const j = await res.json();
+
+      const title  = (j.title  || "").trim();
+      const artist = (j.artist || "").trim();
+      const album  = (j.album  || "").trim();
+      const status = (j.status || "none").toLowerCase();
+      const hasCov = !!j.hasCover;
+      const ts     = j.ts || 0;
+
+      setStatus(status);
+
+      // Hide when paused (if configured)
+      if (cfg && cfg.hideWhenPaused && status.includes("paused")) {
+        overlay.classList.remove("visible");
+        return;
+      }
+
+      // Hide when idle (if configured)
+      const isIdle = status === "none" || status === "closed" || status === "stopped";
+      if (cfg && cfg.hideWhenIdle !== false && isIdle) {
+        overlay.classList.remove("visible");
+        trackKey = "";
+        return;
+      }
+
+      // Nothing playing
+      if (!title) {
+        overlay.classList.remove("visible");
+        trackKey = "";
+        return;
+      }
+
+      overlay.classList.add("visible");
+
+      const key = `${title}\n${artist}\n${album}`;
+      if (key === trackKey) return;
+
+      // ── Cross-fade out ──
+      inner.style.opacity   = "0";
+      inner.style.transform = "translateY(-5px)";
+      await wait(260);
+
+      // ── Update text ──
+      titleEl.classList.remove("scrolling");
+      titleEl.textContent = title;
+
+      const showAlbum = !cfg || cfg.showAlbumInArtist !== false;
+      const parts = showAlbum ? [artist, album].filter(Boolean) : [artist].filter(Boolean);
+      artistEl.textContent = parts.join(" \u00b7 ") || "--";
+
+      // ── Update cover art ──
+      const useAutoColor = !cfg || cfg.accentColorMode === "auto";
+
+      if (hasCov && (!cfg || cfg.showAlbumArt !== false)) {
+        const src = "cover.jpg?_=" + ts;
+        try {
+          await new Promise((ok, fail) => {
+            artImg.onload  = ok;
+            artImg.onerror = fail;
+            artImg.src     = src;
+          });
+          artImg.style.display = "block";
+          artPH.style.display  = "none";
+          if (useAutoColor) applyAccent(extractColor(artImg));
+        } catch {
+          artImg.style.display = "none";
+          artPH.style.display  = "flex";
+          if (useAutoColor) applyAccent(DEFAULT_C);
+        }
+      } else {
+        artImg.style.display = "none";
+        artPH.style.display  = "flex";
+        if (useAutoColor) applyAccent(DEFAULT_C);
+      }
+
+      // ── Cross-fade in ──
+      inner.style.opacity   = "1";
+      inner.style.transform = "translateY(0)";
+
+      trackKey = key;
+
+      requestAnimationFrame(() => requestAnimationFrame(setupMarquee));
+
+    } catch { /* fetch failed */ }
+    finally { busy = false; }
+  }
+
+  /* ── Bootstrap ─────────────────────────────────────────────────── */
+  (async () => {
+    await loadSettings();
+    applySettings();
+    tick();
+    setInterval(tick, POLL);
+  })();
+})();
+</script>
+</body>
+</html>
