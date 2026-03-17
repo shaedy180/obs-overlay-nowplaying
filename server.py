@@ -12,9 +12,17 @@ import http.server
 import json
 import os
 import sys
+from functools import partial
 
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
-ROOT = os.path.dirname(os.path.abspath(__file__))
+
+# When frozen by PyInstaller, __file__ points to a temp directory.
+# The actual files live next to the .exe.
+if getattr(sys, "frozen", False):
+    ROOT = os.path.dirname(sys.executable)
+else:
+    ROOT = os.path.dirname(os.path.abspath(__file__))
+
 SETTINGS_FILE = os.path.join(ROOT, "settings.json")
 JSON_FILE = os.path.join(ROOT, "nowplaying.json")
 
@@ -98,7 +106,8 @@ class OverlayHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def main():
-    server = http.server.HTTPServer(("127.0.0.1", PORT), OverlayHandler)
+    handler = partial(OverlayHandler, directory=ROOT)
+    server = http.server.HTTPServer(("127.0.0.1", PORT), handler)
     print(f"HTTP server running on http://127.0.0.1:{PORT}")
     print(f"  Overlay      http://127.0.0.1:{PORT}/overlay.html")
     print(f"  Settings     http://127.0.0.1:{PORT}/settings.html")

@@ -13,11 +13,12 @@ import threading
 # When frozen by PyInstaller, the working directory should be where
 # the .exe lives, not the temp folder PyInstaller unpacks into.
 if getattr(sys, "frozen", False):
-    os.chdir(os.path.dirname(sys.executable))
-
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-if getattr(sys, "frozen", False):
-    SCRIPT_DIR = os.path.dirname(sys.executable)
+    _exe_dir = os.path.dirname(sys.executable)
+    os.chdir(_exe_dir)
+    # Also fix sys.path so imports of server/nowplaying find the
+    # right ROOT when they check getattr(sys, 'frozen', False)
+else:
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 def run_server():

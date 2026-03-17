@@ -12,7 +12,11 @@ import os
 import sys
 import time
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# When frozen by PyInstaller, __file__ points to a temp directory.
+if getattr(sys, "frozen", False):
+    SCRIPT_DIR = os.path.dirname(sys.executable)
+else:
+    SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_FILE = os.path.join(SCRIPT_DIR, "nowplaying.json")
 COVER_FILE = os.path.join(SCRIPT_DIR, "cover.jpg")
 POLL_INTERVAL = 0.5
