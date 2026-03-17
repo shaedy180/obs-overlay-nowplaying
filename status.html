@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Now Playing - Diagnostics</title>
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0e0e14;
+    --surface: #18181f;
+    --surface2: #1e1e28;
+    --border: rgba(255,255,255,.06);
+    --text: #e8e8ee;
+    --text2: rgba(255,255,255,.45);
+    --green: #34d399;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --accent: #8264f0;
+    --radius: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app {
+    max-width: 620px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+
+  header { margin-bottom: 28px; }
+
+  header h1 {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+  }
+
+  header p {
+    margin-top: 6px;
+    font-size: 13px;
+    color: var(--text2);
+  }
+
+  .section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .section-title {
+    font-size: 13px;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text2);
+    margin-bottom: 16px;
+  }
+
+  .check-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13.5px;
+  }
+
+  .check-row:last-child { border-bottom: none; }
+
+  .dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .dot.green { background: var(--green); box-shadow: 0 0 6px var(--green); }
+  .dot.red { background: var(--red); box-shadow: 0 0 6px var(--red); }
+  .dot.yellow { background: var(--yellow); box-shadow: 0 0 6px var(--yellow); }
+
+  .check-label { flex: 1; }
+  .check-value { color: var(--text2); font-size: 12px; }
+
+  .url-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .url-box:last-child { border-bottom: none; }
+
+  .url-label {
+    font-size: 13px;
+    font-weight: 500;
+    width: 110px;
+    flex-shrink: 0;
+  }
+
+  .url-value {
+    flex: 1;
+    font-size: 13px;
+    font-family: 'Cascadia Code', 'Consolas', monospace;
+    color: var(--text2);
+    word-break: break-all;
+  }
+
+  .copy-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: border-color .15s;
+  }
+
+  .copy-btn:hover { border-color: rgba(255,255,255,.15); }
+  .copy-btn.copied { border-color: var(--green); color: var(--green); }
+
+  .track-info {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .track-info:last-child { border-bottom: none; }
+
+  .track-title {
+    font-size: 15px;
+    font-weight: 600;
+  }
+
+  .track-artist {
+    font-size: 13px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  .track-meta {
+    font-size: 11px;
+    color: var(--text2);
+    margin-top: 6px;
+    display: flex;
+    gap: 16px;
+  }
+
+  .no-track {
+    color: var(--text2);
+    font-size: 13px;
+    padding: 10px 0;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 16px;
+    margin-top: 24px;
+  }
+
+  .nav-links a {
+    color: var(--accent);
+    font-size: 13px;
+    text-decoration: none;
+  }
+
+  .nav-links a:hover { text-decoration: underline; }
+</style>
+</head>
+
+<body>
+<div class="app">
+  <header>
+    <h1>Now Playing - Diagnostics</h1>
+    <p>Health checks and quick links. This page refreshes automatically.</p>
+  </header>
+
+  <div class="section">
+    <div class="section-title">Health</div>
+    <div class="check-row">
+      <div class="dot" id="dotServer"></div>
+      <div class="check-label">HTTP server</div>
+      <div class="check-value" id="valServer">checking...</div>
+    </div>
+    <div class="check-row">
+      <div class="dot" id="dotExtractor"></div>
+      <div class="check-label">Media extractor</div>
+      <div class="check-value" id="valExtractor">checking...</div>
+    </div>
+    <div class="check-row">
+      <div class="dot" id="dotSettings"></div>
+      <div class="check-label">Settings file</div>
+      <div class="check-value" id="valSettings">checking...</div>
+    </div>
+    <div class="check-row">
+      <div class="dot" id="dotCover"></div>
+      <div class="check-label">Cover art</div>
+      <div class="check-value" id="valCover">checking...</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">URLs</div>
+    <div class="url-box">
+      <div class="url-label">OBS overlay</div>
+      <div class="url-value" id="urlOverlay"></div>
+      <button class="copy-btn" onclick="copyUrl('urlOverlay', this)">Copy</button>
+    </div>
+    <div class="url-box">
+      <div class="url-label">Settings</div>
+      <div class="url-value" id="urlSettings"></div>
+      <button class="copy-btn" onclick="copyUrl('urlSettings', this)">Copy</button>
+    </div>
+    <div class="url-box">
+      <div class="url-label">Preview</div>
+      <div class="url-value" id="urlPreview"></div>
+      <button class="copy-btn" onclick="copyUrl('urlPreview', this)">Copy</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Current track</div>
+    <div id="trackArea">
+      <div class="no-track">Loading...</div>
+    </div>
+  </div>
+
+  <div class="nav-links">
+    <a href="settings.html">Settings</a>
+    <a href="overlay.html?debug">Preview overlay</a>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+
+  const $ = id => document.getElementById(id);
+  const base = location.origin;
+
+  // Fill URL fields
+  $("urlOverlay").textContent = base + "/overlay.html";
+  $("urlSettings").textContent = base + "/settings.html";
+  $("urlPreview").textContent = base + "/overlay.html?debug";
+
+  function setCheck(dotId, valId, ok, label) {
+    const dot = $(dotId);
+    const val = $(valId);
+    dot.className = "dot " + (ok === true ? "green" : ok === false ? "red" : "yellow");
+    val.textContent = label;
+  }
+
+  async function refresh() {
+    try {
+      const res = await fetch("/api/status", { method: "POST", cache: "no-store" });
+      if (!res.ok) throw new Error("status endpoint failed");
+      const d = await res.json();
+
+      setCheck("dotServer", "valServer", true, "running on port " + d.port);
+      setCheck("dotExtractor", "valExtractor", d.extractor, d.extractor ? "running" : "not detected");
+      setCheck("dotSettings", "valSettings", d.hasSettings, d.hasSettings ? "found" : "missing");
+      setCheck("dotCover", "valCover", d.hasCover, d.hasCover ? "available" : "no cover yet");
+
+      const area = $("trackArea");
+      if (d.nowplaying && d.nowplaying.title) {
+        const np = d.nowplaying;
+        const source = np.source ? `<span>Source: ${esc(np.source)}</span>` : "";
+        area.innerHTML = `
+          <div class="track-info">
+            <div class="track-title">${esc(np.title)}</div>
+            <div class="track-artist">${esc(np.artist)}${np.album ? " / " + esc(np.album) : ""}</div>
+            <div class="track-meta">
+              <span>Status: ${esc(np.status)}</span>
+              ${source}
+              <span>Cover: ${np.hasCover ? "yes" : "no"}</span>
+            </div>
+          </div>`;
+      } else {
+        area.innerHTML = '<div class="no-track">Nothing playing right now.</div>';
+      }
+    } catch {
+      setCheck("dotServer", "valServer", false, "unreachable");
+      setCheck("dotExtractor", "valExtractor", null, "unknown");
+      setCheck("dotSettings", "valSettings", null, "unknown");
+      setCheck("dotCover", "valCover", null, "unknown");
+      $("trackArea").innerHTML = '<div class="no-track">Could not reach the server.</div>';
+    }
+  }
+
+  function esc(s) {
+    const d = document.createElement("div");
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  window.copyUrl = function(id, btn) {
+    const text = $(id).textContent;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = "Copied!";
+      btn.classList.add("copied");
+      setTimeout(() => { btn.textContent = "Copy"; btn.classList.remove("copied"); }, 1500);
+    });
+  };
+
+  refresh();
+  setInterval(refresh, 3000);
+})();
+</script>
+</body>
+</html>

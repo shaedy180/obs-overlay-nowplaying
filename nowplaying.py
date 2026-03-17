@@ -1,9 +1,9 @@
 """
-Now Playing extractor — reads Windows Global System Media Transport Controls (GSMTC)
+Now Playing extractor - reads Windows media controls (GSMTC)
 and writes nowplaying.json + cover.jpg for the OBS overlay.
 
-Works with Apple Music, Spotify, browsers, and anything that registers
-with Windows media controls.
+Works with Spotify, Apple Music, browsers, and anything that
+shows up in the Windows volume flyout.
 """
 
 import asyncio
@@ -101,7 +101,7 @@ async def main() -> None:
     print("Now Playing extractor started.")
     print(f"  JSON  -> {JSON_FILE}")
     print(f"  Cover -> {COVER_FILE}")
-    print(f"  Polling every {POLL_INTERVAL:.1f}s - Ctrl+C to stop.\n")
+    print(f"  Polling every {POLL_INTERVAL:.1f}s -- Ctrl+C to stop.\n")
 
     mgr = await GSMTC.request_async()
 
@@ -114,6 +114,7 @@ async def main() -> None:
             "artist": "",
             "album": "",
             "status": "none",
+            "source": "",
             "hasCover": False,
             "ts": time.time(),
         }
@@ -129,6 +130,33 @@ async def main() -> None:
                 album = props.album_title or ""
                 status = _resolve_status(info)
 
+                # Try to get the source app name
+                source = ""
+                try:
+                    source = session.source_app_user_model_id or ""
+                    # Clean up common app IDs to friendly names
+                    source_lower = source.lower()
+                    if "spotify" in source_lower:
+                        source = "Spotify"
+                    elif "apple" in source_lower or "itunes" in source_lower or "cider" in source_lower:
+                        source = "Apple Music"
+                    elif "chrome" in source_lower:
+                        source = "Chrome"
+                    elif "firefox" in source_lower:
+                        source = "Firefox"
+                    elif "edge" in source_lower:
+                        source = "Edge"
+                    elif "vlc" in source_lower:
+                        source = "VLC"
+                    elif "foobar" in source_lower:
+                        source = "foobar2000"
+                    elif "musicbee" in source_lower:
+                        source = "MusicBee"
+                    elif "winamp" in source_lower:
+                        source = "Winamp"
+                except Exception:
+                    pass
+
                 # Save cover art only when track changes
                 cover_key = f"{title}|{artist}|{album}"
                 if cover_key != last_cover_key:
@@ -143,6 +171,7 @@ async def main() -> None:
                         "artist": artist,
                         "album": album,
                         "status": status,
+                        "source": source,
                         "hasCover": has_cover,
                         "ts": time.time(),
                     }

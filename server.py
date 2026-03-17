@@ -1,8 +1,7 @@
 """
 HTTP server for the Now Playing overlay.
 
-- Serves static files with no-cache headers
-- Handles POST /save-settings to persist settings.json from the settings panel
+Serves static files with no-cache headers and handles settings save/load.
 
 Usage:
     python server.py          # serves on http://127.0.0.1:8000
@@ -17,6 +16,7 @@ import sys
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SETTINGS_FILE = os.path.join(ROOT, "settings.json")
+JSON_FILE = os.path.join(ROOT, "nowplaying.json")
 
 os.chdir(ROOT)
 
@@ -59,6 +59,36 @@ class OverlayHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header("Content-Type", "application/json")
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(exc)}).encode())
+        elif self.path == "/api/status":
+            try:
+                result = {"server": True, "port": PORT}
+
+                # Check if nowplaying.json exists and is recent
+                if os.path.isfile(JSON_FILE):
+                    with open(JSON_FILE, "r", encoding="utf-8") as f:
+                        np = json.load(f)
+                    result["extractor"] = True
+                    result["nowplaying"] = np
+                else:
+                    result["extractor"] = False
+                    result["nowplaying"] = None
+
+                # Check cover
+                cover_path = os.path.join(ROOT, "cover.jpg")
+                result["hasCover"] = os.path.isfile(cover_path)
+
+                # Check settings
+                result["hasSettings"] = os.path.isfile(SETTINGS_FILE)
+
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps(result).encode())
+            except Exception as exc:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(exc)}).encode())
         else:
             self.send_response(404)
             self.end_headers()
@@ -70,9 +100,10 @@ class OverlayHandler(http.server.SimpleHTTPRequestHandler):
 def main():
     server = http.server.HTTPServer(("127.0.0.1", PORT), OverlayHandler)
     print(f"HTTP server running on http://127.0.0.1:{PORT}")
-    print(f"  Overlay    -> http://127.0.0.1:{PORT}/overlay.html")
-    print(f"  Settings   -> http://127.0.0.1:{PORT}/settings.html")
-    print(f"  Preview    -> http://127.0.0.1:{PORT}/overlay.html?debug")
+    print(f"  Overlay      http://127.0.0.1:{PORT}/overlay.html")
+    print(f"  Settings     http://127.0.0.1:{PORT}/settings.html")
+    print(f"  Diagnostics  http://127.0.0.1:{PORT}/status.html")
+    print(f"  Preview      http://127.0.0.1:{PORT}/overlay.html?debug")
     print()
     try:
         server.serve_forever()
