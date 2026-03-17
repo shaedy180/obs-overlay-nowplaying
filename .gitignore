@@ -6,3 +6,6 @@ nowplaying.json.tmp
 cover.jpg
 settings.json.tmp
 .vscode/
+dist/
+build/
+*.spec

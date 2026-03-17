@@ -9,6 +9,13 @@ echo     Now Playing - OBS Overlay
 echo   ======================================
 echo.
 
+REM -- Detect mode: .exe build or Python source ----------------------
+if exist "NowPlaying.exe" goto :exe_mode
+
+REM ================================================================
+REM   Python / source mode
+REM ================================================================
+
 REM -- Preflight: find Python ----------------------------------------
 python --version >nul 2>&1
 if errorlevel 1 (
@@ -117,3 +124,54 @@ echo   Press Ctrl+C to stop the server.
 echo.
 
 venv\Scripts\python.exe server.py
+goto :eof
+
+REM ================================================================
+REM   .exe mode (no Python needed)
+REM ================================================================
+:exe_mode
+
+REM -- Check for updates if requested --------------------------------
+if "%1"=="--update" (
+    echo   Checking for updates ...
+    NowPlaying.exe --update
+    echo.
+    pause
+    exit /b
+)
+
+echo   Running from standalone build.
+echo.
+
+REM -- Check if port 8000 is free ------------------------------------
+netstat -an | findstr ":8000 " | findstr "LISTENING" >nul 2>&1
+if not errorlevel 1 (
+    echo   [!] Port 8000 is already in use.
+    echo       Close whatever is using it first.
+    echo.
+    pause
+    exit /b 1
+)
+
+echo   .--------------------------------------------------.
+echo   :                                                  :
+echo   :  OBS Browser Source URL:                         :
+echo   :  http://127.0.0.1:8000/overlay.html              :
+echo   :                                                  :
+echo   :  Settings panel:                                 :
+echo   :  http://127.0.0.1:8000/settings.html             :
+echo   :                                                  :
+echo   :  Diagnostics:                                    :
+echo   :  http://127.0.0.1:8000/status.html               :
+echo   :                                                  :
+echo   :  Recommended OBS size: 480 x 120                 :
+echo   :                                                  :
+echo   '--------------------------------------------------'
+echo.
+
+start "" "http://127.0.0.1:8000/settings.html"
+
+echo   Press Ctrl+C to stop.
+echo.
+
+NowPlaying.exe
