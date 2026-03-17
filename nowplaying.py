@@ -29,7 +29,7 @@ STATUS_MAP = {
 
 
 def _write_json(payload: dict) -> None:
-    """Write JSON atomically (temp file → rename)."""
+    """Write JSON atomically (temp file, then rename)."""
     tmp = JSON_FILE + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False)
@@ -85,7 +85,7 @@ def _resolve_status(playback_info) -> str:
 
 
 async def main() -> None:
-    # ── Import winrt (split packages) ──────────────────────────────
+    # Import winrt (split packages)
     try:
         from winrt.windows.media.control import (
             GlobalSystemMediaTransportControlsSessionManager as GSMTC,
@@ -190,7 +190,7 @@ async def main() -> None:
 
             icon = {"playing": ">", "paused": "|", "none": "."}.get(payload["status"], "?")
             if payload["title"]:
-                print(f"  {icon}  {payload['title']} — {payload['artist']}")
+                print(f"  {icon}  {payload['title']} - {payload['artist']}")
             else:
                 print(f"  {icon}  (nothing playing)")
 
