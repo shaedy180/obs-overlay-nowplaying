@@ -4,7 +4,7 @@ A small "now playing" overlay for OBS that shows what you're listening to.
 It reads from Windows media controls, so it works with Spotify, Apple Music,
 browsers, and pretty much anything that shows up in the Windows volume flyout.
 
-![Glass pill overlay with album art, title, artist, and animated EQ bars](https://via.placeholder.com/480x120.png?text=Now+Playing+Overlay)
+![Glass pill overlay with album art, title, artist, and animated EQ bars](https://i.imgur.com/XejPv7Z.png)
 
 
 ## Quickstart (recommended)
