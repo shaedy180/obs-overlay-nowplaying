@@ -35,6 +35,12 @@ def run_server():
 
 
 def main():
+    # Handle --update flag before starting anything else
+    if "--update" in sys.argv:
+        import update
+        update.main()
+        return
+
     version = _get_version()
     print()
     print("  ======================================")

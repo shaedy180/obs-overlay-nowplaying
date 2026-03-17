@@ -22,8 +22,9 @@ DATA_FILES = [
     "overlay.html",
     "settings.html",
     "status.html",
+    "update.py",
     "version.txt",
-    "requirements.txt",
+    "README.md",
     "LICENSE",
 ]
 
