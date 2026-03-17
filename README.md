@@ -1,154 +1,135 @@
-# Now Playing — OBS Overlay
+# Now Playing for OBS
 
-A clean, glass-style "Now Playing" overlay for OBS Studio that reads from
-Windows Media Controls (GSMTC). Works with Apple Music, Spotify, browsers,
-and any application that registers with the Windows media transport layer.
+A small "now playing" overlay for OBS that shows what you're listening to.
+It reads from Windows media controls, so it works with Spotify, Apple Music,
+browsers, and pretty much anything that shows up in the Windows volume flyout.
 
----
+![Glass pill overlay with album art, title, artist, and animated EQ bars](https://via.placeholder.com/480x120.png?text=Now+Playing+Overlay)
 
-## Features
 
-- **Automatic media detection** — reads whatever is playing via the Windows
-  Global System Media Transport Controls API (no app-specific hacks).
-- **Album art** extracted from the active media session, displayed as a
-  rounded thumbnail.
-- **Dynamic accent colour** — the dominant colour is pulled from the album
-  art and used for the equaliser bars and glow. Can be overridden with a
-  fixed colour.
-- **Animated equaliser bars** while playing; a pause icon when paused;
-  flat bars when idle.
-- **Marquee scroll** for long titles that exceed the pill width.
-- **Crossfade transition** on track changes (opacity + vertical slide).
-- **Glassmorphism pill** with configurable blur, border, background
-  transparency, and corner radius.
-- **Settings panel** (`settings.html`) — a visual editor for every
-  customisation option. Changes are saved to `settings.json` and applied
-  to the overlay in real time.
-- **One-click launcher** (`start.bat`) — creates a virtualenv, installs
-  dependencies, and starts both the extractor and the HTTP server.
+## Quickstart
+
+1. Double-click `start.bat`.
+2. It sets up a Python venv, installs deps, and starts everything.
+3. In OBS, add a **Browser Source** with URL `http://127.0.0.1:8000/overlay.html`,
+   width 480, height 120.  Done.
+
+The settings page opens automatically in your browser after launch.
+
+
+## What it does
+
+- Reads the currently playing track via the Windows GSMTC API (no Spotify
+  API key, no login, nothing to configure)
+- Shows title, artist, album art in a translucent glass pill
+- Pulls the accent color from the album cover automatically
+- Animated equalizer bars while playing, pause icon when paused
+- Scrolls long titles with a marquee
+- Crossfade animation on track changes
+- Built-in demo mode for setting things up without music playing
+- Presets for quick styling (Minimal, Neon, Glass, Compact)
+- Everything is configurable through a visual settings panel
 
 
 ## Requirements
 
-- Windows 10 / 11
-- Python 3.10 or newer
-- OBS Studio (or any application that can load a Browser Source)
+- Windows 10 or 11
+- Python 3.10+
+- OBS Studio (or anything with a browser source)
 
 
-## Quick Start
+## Manual setup
 
-### Option A — double-click
-
-1. Double-click **`start.bat`**.
-2. It will create a virtual environment, install dependencies, start the
-   media extractor, and start the HTTP server automatically.
-3. The console will show the URLs to use.
-
-### Option B — manual (two terminals)
+If you don't want to use `start.bat`, open two terminals:
 
 ```
-cd obs-overlay-nowplaying
-
-# Terminal 1 — create environment and start extractor
+# Terminal 1: create venv and start the media extractor
 python -m venv venv
 venv\Scripts\pip install -r requirements.txt
 venv\Scripts\python nowplaying.py
 
-# Terminal 2 — start HTTP server
+# Terminal 2: start the web server
 venv\Scripts\python server.py
 ```
 
 
-## OBS Setup
+## OBS setup
 
-1. In OBS, add a **Browser Source**.
+1. Add a **Browser Source** in OBS.
 2. Set the URL to `http://127.0.0.1:8000/overlay.html`.
-3. Set width to **480** and height to **120** (or adjust to taste).
-4. Optionally enable *Refresh browser when scene becomes active*.
-5. The background is transparent — the pill composites directly over your
-   scene.
+3. Set width to **480** and height to **120** (adjust to taste).
+4. Optional: enable "Refresh browser when scene becomes active".
+5. The background is transparent, so the pill just sits on top of your scene.
+
+You can copy the URL directly from the diagnostics page at
+`http://127.0.0.1:8000/status.html`.
 
 
-## Settings Panel
+## Settings
 
-Open `http://127.0.0.1:8000/settings.html` in any browser while the server
-is running. The panel includes:
+Open `http://127.0.0.1:8000/settings.html` while the server is running.
+The page has a live preview at the top. Any change you make shows up
+immediately.
 
-| Section      | Options                                                          |
-|--------------|------------------------------------------------------------------|
-| Layout       | Overlay width, corner radius, album art size and radius          |
-| Colors       | Pill background (rgba), blur strength, border colour, text       |
-|              | colour, accent colour mode (auto from cover / fixed), fixed      |
-|              | accent colour picker                                             |
-| Typography   | Title size, artist size, artist opacity, marquee speed, font     |
-| Visibility   | Show/hide album art, equaliser, artist line, album in artist     |
-|              | line; hide overlay when paused; hide overlay when idle           |
-
-Changes are written to `settings.json`. The overlay reloads settings
-automatically every few seconds, or instantly when using the settings panel
-(which pushes updates via `postMessage`).
-
-A live preview of the overlay is embedded at the top of the settings page.
+You can tweak layout, colors, blur, typography, visibility, and more.
+There are built-in presets if you want a quick starting point, and you can
+import/export your settings as a JSON file.
 
 
-## File Overview
+## Files
 
-```
-obs-overlay-nowplaying/
-  nowplaying.py       Python extractor — polls GSMTC, writes nowplaying.json + cover.jpg
-  server.py           HTTP server with no-cache headers and POST endpoint for settings
-  overlay.html        The overlay itself — glass pill, EQ bars, pause icon, crossfade
-  settings.html       Visual settings panel with live preview
-  settings.json       Persisted customisation (auto-generated on first save)
-  start.bat           One-click launcher for Windows
-  requirements.txt    Python dependencies (winrt packages)
-```
+| File              | What it does                                          |
+|-------------------|-------------------------------------------------------|
+| `nowplaying.py`   | Polls Windows media controls, writes `nowplaying.json` and `cover.jpg` |
+| `server.py`       | Local HTTP server with no-cache headers and a settings save endpoint |
+| `overlay.html`    | The overlay (glass pill, EQ bars, crossfade, demo mode) |
+| `settings.html`   | Visual settings editor with live preview and presets  |
+| `status.html`     | Diagnostics page (health checks, OBS URL, last track) |
+| `settings.json`   | Your saved settings (auto-generated)                  |
+| `start.bat`       | One-click launcher                                    |
+| `requirements.txt`| Python dependencies (winrt packages)                  |
 
 
-## How It Works
+## How it works
 
-1. `nowplaying.py` uses the `winrt` Python bindings to access the Windows
-   GSMTC session manager. Every 0.5 seconds it reads the current media
-   session (title, artist, album, playback status) and writes
-   `nowplaying.json`. When the track changes it also extracts the album
-   art thumbnail and saves it as `cover.jpg`.
+`nowplaying.py` uses Python winrt bindings to talk to the Windows media
+session manager. Every half second it checks what's playing, writes the
+info to `nowplaying.json`, and saves the album art as `cover.jpg` when
+the track changes.
 
-2. `server.py` is a minimal HTTP server that serves the project folder on
-   `127.0.0.1:8000` with no-cache headers (so the overlay always gets
-   fresh data). It also exposes `POST /save-settings` so the settings
-   panel can persist changes.
+`server.py` serves the project folder on localhost:8000 with no-cache
+headers. It also has a POST endpoint so the settings panel can save
+changes.
 
-3. `overlay.html` polls `nowplaying.json` every 500 ms. On each tick it
-   updates the text, loads cover art, extracts the dominant colour, and
-   manages the play/pause/idle visual state. It reads `settings.json` on
-   startup and every few seconds for customisation values.
+`overlay.html` polls `nowplaying.json` every 500ms, updates the display,
+extracts the dominant color from the cover art, and handles all the
+animations. It picks up settings changes automatically.
 
-4. `settings.html` is a standalone page that reads and writes
-   `settings.json` through the server. It also sends live updates to the
-   embedded preview iframe via `postMessage`, so you see changes before
-   saving.
+`settings.html` reads and writes settings through the server and pushes
+live updates to the preview iframe so you see changes before saving.
 
 
 ## Troubleshooting
 
 **Nothing shows up in the overlay**
-Make sure media is actually playing. The overlay hides itself when nothing
-is detected. Check that `nowplaying.json` exists and contains track data
-(open it in a text editor, or visit `http://127.0.0.1:8000/nowplaying.json`).
+Make sure something is actually playing. The overlay hides itself when
+idle. Check if `nowplaying.json` has data by opening
+`http://127.0.0.1:8000/nowplaying.json` in your browser, or check the
+diagnostics page at `http://127.0.0.1:8000/status.html`.
 
 **Album art is missing**
-Some applications do not provide thumbnails through the Windows media API.
-The overlay will show a placeholder note icon in that case.
+Some apps don't provide album art through the Windows media API.
+The overlay shows a gradient placeholder in that case.
 
 **The extractor crashes on startup**
-Make sure you installed the dependencies into the virtual environment:
+Make sure the dependencies are installed:
 ```
 venv\Scripts\pip install -r requirements.txt
 ```
 
-**Port 8000 is in use**
-Pass a different port: `venv\Scripts\python server.py 9000`, and update the
-OBS Browser Source URL accordingly.
+**Port 8000 is already taken**
+Pass a different port: `venv\Scripts\python server.py 9000`, then update
+the OBS browser source URL to match.
 
 
 ## License
