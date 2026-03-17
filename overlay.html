@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Now Playing</title>
 <style>
-  /* ── Registered custom properties (enables smooth colour transitions) ── */
   @property --ac-r { syntax: '<number>'; inherits: true; initial-value: 130; }
   @property --ac-g { syntax: '<number>'; inherits: true; initial-value: 100; }
   @property --ac-b { syntax: '<number>'; inherits: true; initial-value: 240; }
@@ -29,7 +28,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── Debug mode (add ?debug to URL) ── */
   body.debug {
     background: #0e0e18;
     min-height: 100vh;
@@ -37,9 +35,10 @@
     align-items: center;
     justify-content: center;
     padding: 40px;
+    flex-direction: column;
+    gap: 16px;
   }
 
-  /* ── Glass pill container ─────────────────────────────────────── */
   .overlay {
     width: var(--overlay-width, 440px);
     display: flex;
@@ -64,6 +63,7 @@
     opacity: 0;
     transform: translateY(10px) scale(.98);
     will-change: opacity, transform;
+    position: relative;
   }
 
   .overlay.visible {
@@ -71,7 +71,26 @@
     transform: translateY(0) scale(1);
   }
 
-  /* ── Album art ────────────────────────────────────────────────── */
+  .overlay.dimmed {
+    opacity: 0.45;
+    transform: translateY(0) scale(1);
+  }
+
+  /* Track change flash */
+  .overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: rgba(255,255,255,0);
+    transition: background .15s ease;
+    pointer-events: none;
+  }
+
+  .overlay.flash::after {
+    background: rgba(255,255,255,.08);
+  }
+
   .art-wrap {
     flex-shrink: 0;
     width: var(--art-size, 60px);
@@ -101,16 +120,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,.02) 100%);
+    background: linear-gradient(
+      135deg,
+      rgba(var(--ac-r), var(--ac-g), var(--ac-b), 0.18) 0%,
+      rgba(var(--ac-r), var(--ac-g), var(--ac-b), 0.05) 100%
+    );
+    transition: background .8s ease;
   }
 
   .art-placeholder svg {
     width: 26px;
     height: 26px;
-    fill: rgba(255,255,255,.2);
+    fill: rgba(255,255,255,.25);
   }
 
-  /* ── Meta text ────────────────────────────────────────────────── */
   .meta {
     flex: 1;
     min-width: 0;
@@ -121,7 +144,6 @@
     transition: opacity .30s ease, transform .30s ease;
   }
 
-  /* Title with optional marquee */
   .title-wrap {
     overflow: hidden;
     -webkit-mask-image: linear-gradient(to right, #000 0%, #000 calc(100% - 32px), transparent 100%);
@@ -156,7 +178,6 @@
 
   .artist.hidden { display: none; }
 
-  /* ── Status indicator (EQ bars + pause icon) ──────────────────── */
   .status-indicator {
     flex-shrink: 0;
     display: flex;
@@ -170,7 +191,6 @@
 
   .status-indicator.hidden { display: none; }
 
-  /* Equaliser bars (visible when playing) */
   .eq {
     display: flex;
     align-items: flex-end;
@@ -195,7 +215,6 @@
   @keyframes eq-c { to { height: 95%; } }
   @keyframes eq-d { to { height: 45%; } }
 
-  /* Pause icon (visible when paused) */
   .pause-icon {
     font-size: 18px;
     line-height: 1;
@@ -205,28 +224,33 @@
     filter: grayscale(.15);
   }
 
-  /* Idle bars (nothing playing) */
   .overlay.idle .eq { opacity: .25; }
   .overlay.idle .eq-bar { animation: none; height: 12%; }
   .overlay.idle .pause-icon { display: none; }
 
-  /* Paused state: hide EQ, show pause icon */
   .overlay.paused .eq { display: none; }
   .overlay.paused .pause-icon { display: block; }
 
-  /* ── Marquee keyframes ────────────────────────────────────────── */
   @keyframes marquee {
     0%, 12%   { transform: translateX(0); }
     88%, 100% { transform: translateX(var(--marquee-off)); }
   }
 
-  /* ── Hidden helper canvas ─────────────────────────────────────── */
   #colorCanvas { display: none; }
+
+  /* Source label in debug mode */
+  .source-label {
+    display: none;
+    font-size: 11px;
+    color: rgba(255,255,255,.35);
+    text-align: center;
+  }
+
+  body.debug .source-label.visible { display: block; }
 </style>
 </head>
 
 <body>
-<!-- ── Overlay ────────────────────────────────────────────────────── -->
 <div id="overlay" class="overlay idle">
   <div class="art-wrap" id="artWrap">
     <img id="art" alt="" style="display:none" crossorigin="anonymous" />
@@ -253,17 +277,19 @@
   </div>
 </div>
 
+<div class="source-label" id="sourceLabel"></div>
+
 <canvas id="colorCanvas"></canvas>
 
 <script>
 (() => {
   "use strict";
 
-  /* ── Debug background ─────────────────────────────────────────── */
-  const isDebug = location.search.includes("debug");
+  const isDebug   = location.search.includes("debug");
+  const isPreview = location.search.includes("preview");
+  const isDemoReq = location.search.includes("demo");
   if (isDebug) document.body.classList.add("debug");
 
-  /* ── DOM refs ──────────────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
   const overlay   = $("overlay");
   const titleEl   = $("title");
@@ -274,6 +300,7 @@
   const artWrap   = $("artWrap");
   const inner     = $("inner");
   const statusInd = $("statusIndicator");
+  const srcLabel  = $("sourceLabel");
   const cvs       = $("colorCanvas");
   const ctx       = cvs.getContext("2d", { willReadFrequently: true });
 
@@ -281,8 +308,19 @@
   const DEFAULT_C = { r: 130, g: 100, b: 240 };
   let trackKey = "";
   let cfg = null;
+  let demoMode = false;
 
-  /* ── Settings loader ───────────────────────────────────────────── */
+  // Demo data for setup without music
+  const DEMO = {
+    title: "Blinding Lights",
+    artist: "The Weeknd",
+    album: "After Hours",
+    status: "playing",
+    source: "Demo",
+    hasCover: false,
+    ts: 0
+  };
+
   async function loadSettings() {
     try {
       const res = await fetch("settings.json?_=" + Date.now(), { cache: "no-store" });
@@ -307,19 +345,16 @@
     s.setProperty("--art-radius",     cfg.artRadius + "px");
     document.body.style.fontFamily = cfg.fontFamily || "";
 
-    // Visibility toggles
     artWrap.classList.toggle("hidden", !cfg.showAlbumArt);
     statusInd.classList.toggle("hidden", !cfg.showEqualizer);
     artistEl.classList.toggle("hidden", !cfg.showArtist);
 
-    // Fixed accent colour
     if (cfg.accentColorMode === "fixed" && cfg.accentColorFixed) {
       const fc = hexToRgb(cfg.accentColorFixed);
       if (fc) applyAccent(fc);
     }
   }
 
-  /* ── Listen for live settings from the settings panel iframe ───── */
   window.addEventListener("message", (e) => {
     if (e.data && e.data.type === "settings-update") {
       cfg = e.data.settings;
@@ -328,7 +363,6 @@
     }
   });
 
-  /* ── Colour helpers ────────────────────────────────────────────── */
   function hexToRgb(hex) {
     const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
     return m ? { r: parseInt(m[1],16), g: parseInt(m[2],16), b: parseInt(m[3],16) } : null;
@@ -373,7 +407,6 @@
     s.setProperty("--ac-b", c.b);
   }
 
-  /* ── Marquee setup ─────────────────────────────────────────────── */
   function setupMarquee() {
     const textW = titleEl.scrollWidth;
     const boxW  = titleW.clientWidth;
@@ -389,17 +422,42 @@
     }
   }
 
-  /* ── Helpers ───────────────────────────────────────────────────── */
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
-  function setStatus(status) {
-    overlay.classList.remove("paused", "idle");
-    if (status.includes("paused"))  overlay.classList.add("paused");
-    else if (status === "none" || status === "closed" || status === "stopped")
-      overlay.classList.add("idle");
+  function triggerFlash() {
+    overlay.classList.add("flash");
+    setTimeout(() => overlay.classList.remove("flash"), 250);
   }
 
-  /* ── Main polling loop ─────────────────────────────────────────── */
+  function setStatus(status) {
+    overlay.classList.remove("paused", "idle", "dimmed");
+    if (status.includes("paused")) {
+      overlay.classList.add("paused");
+      // Dim instead of hide if configured
+      if (cfg && cfg.dimWhenPaused && !cfg.hideWhenPaused) {
+        overlay.classList.add("dimmed");
+      }
+    } else if (status === "none" || status === "closed" || status === "stopped") {
+      overlay.classList.add("idle");
+    }
+  }
+
+  function updateSourceLabel(source) {
+    if (!isDebug || !source) {
+      srcLabel.classList.remove("visible");
+      return;
+    }
+    srcLabel.textContent = "Source: " + source;
+    srcLabel.classList.add("visible");
+  }
+
+  // -- Demo mode: show overlay with sample data when nothing plays --
+  function shouldUseDemo(realData) {
+    if (isDemoReq) return true;
+    if (isPreview && (!realData || !realData.title)) return true;
+    return false;
+  }
+
   let busy = false;
   let settingsTick = 0;
 
@@ -407,40 +465,52 @@
     if (busy) return;
     busy = true;
     try {
-      // Reload settings every ~5 seconds
       if (settingsTick++ % 10 === 0) {
         await loadSettings();
         applySettings();
       }
 
-      const res = await fetch("nowplaying.json?_=" + Date.now(), { cache: "no-store" });
-      if (!res.ok) return;
-      const j = await res.json();
+      let j;
+      try {
+        const res = await fetch("nowplaying.json?_=" + Date.now(), { cache: "no-store" });
+        if (res.ok) j = await res.json();
+      } catch { /* no data */ }
+
+      // Use demo data if needed
+      if (shouldUseDemo(j)) {
+        j = DEMO;
+        demoMode = true;
+      } else {
+        demoMode = false;
+      }
+
+      if (!j) { busy = false; return; }
 
       const title  = (j.title  || "").trim();
       const artist = (j.artist || "").trim();
       const album  = (j.album  || "").trim();
       const status = (j.status || "none").toLowerCase();
       const hasCov = !!j.hasCover;
+      const source = j.source || "";
       const ts     = j.ts || 0;
 
       setStatus(status);
+      updateSourceLabel(source);
 
-      // Hide when paused (if configured)
-      if (cfg && cfg.hideWhenPaused && status.includes("paused")) {
+      // Hide when paused (if configured and not dimming)
+      if (cfg && cfg.hideWhenPaused && !cfg.dimWhenPaused && status.includes("paused")) {
         overlay.classList.remove("visible");
         return;
       }
 
-      // Hide when idle (if configured)
+      // Hide when idle
       const isIdle = status === "none" || status === "closed" || status === "stopped";
-      if (cfg && cfg.hideWhenIdle !== false && isIdle) {
+      if (!demoMode && cfg && cfg.hideWhenIdle !== false && isIdle) {
         overlay.classList.remove("visible");
         trackKey = "";
         return;
       }
 
-      // Nothing playing
       if (!title) {
         overlay.classList.remove("visible");
         trackKey = "";
@@ -452,20 +522,23 @@
       const key = `${title}\n${artist}\n${album}`;
       if (key === trackKey) return;
 
-      // ── Cross-fade out ──
+      // Track change flash
+      if (trackKey !== "") {
+        triggerFlash();
+      }
+
+      // Cross-fade out
       inner.style.opacity   = "0";
       inner.style.transform = "translateY(-5px)";
       await wait(260);
 
-      // ── Update text ──
       titleEl.classList.remove("scrolling");
       titleEl.textContent = title;
 
       const showAlbum = !cfg || cfg.showAlbumInArtist !== false;
       const parts = showAlbum ? [artist, album].filter(Boolean) : [artist].filter(Boolean);
-      artistEl.textContent = parts.join(" \u00b7 ") || "--";
+      artistEl.textContent = parts.join(" / ") || "--";
 
-      // ── Update cover art ──
       const useAutoColor = !cfg || cfg.accentColorMode === "auto";
 
       if (hasCov && (!cfg || cfg.showAlbumArt !== false)) {
@@ -490,7 +563,7 @@
         if (useAutoColor) applyAccent(DEFAULT_C);
       }
 
-      // ── Cross-fade in ──
+      // Cross-fade in
       inner.style.opacity   = "1";
       inner.style.transform = "translateY(0)";
 
@@ -502,7 +575,6 @@
     finally { busy = false; }
   }
 
-  /* ── Bootstrap ─────────────────────────────────────────────────── */
   (async () => {
     await loadSettings();
     applySettings();
