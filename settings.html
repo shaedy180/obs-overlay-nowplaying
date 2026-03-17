@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Now Playing — Settings</title>
+<title>Now Playing - Settings</title>
 <style>
   *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -16,6 +16,8 @@
     --text2: rgba(255,255,255,.45);
     --accent: #8264f0;
     --accent-dim: rgba(130,100,240,.15);
+    --green: #34d399;
+    --yellow: #fbbf24;
     --radius: 12px;
   }
 
@@ -27,16 +29,13 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* ── Layout ──────────────────────────────────────────────────── */
   .app {
     max-width: 720px;
     margin: 0 auto;
     padding: 32px 24px 80px;
   }
 
-  header {
-    margin-bottom: 32px;
-  }
+  header { margin-bottom: 28px; }
 
   header h1 {
     font-size: 22px;
@@ -50,10 +49,7 @@
     color: var(--text2);
   }
 
-  /* ── Preview iframe ──────────────────────────────────────────── */
-  .preview-section {
-    margin-bottom: 28px;
-  }
+  .preview-section { margin-bottom: 28px; }
 
   .preview-frame {
     width: 100%;
@@ -77,7 +73,6 @@
     text-align: center;
   }
 
-  /* ── Section cards ───────────────────────────────────────────── */
   .section {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -85,6 +80,9 @@
     padding: 20px;
     margin-bottom: 16px;
   }
+
+  .section.advanced { display: none; }
+  body.show-advanced .section.advanced { display: block; }
 
   .section-title {
     font-size: 13px;
@@ -95,7 +93,6 @@
     margin-bottom: 16px;
   }
 
-  /* ── Form rows ───────────────────────────────────────────────── */
   .row {
     display: flex;
     align-items: center;
@@ -106,6 +103,8 @@
   }
 
   .row:last-child { border-bottom: none; }
+  .row.advanced-row { display: none; }
+  body.show-advanced .row.advanced-row { display: flex; }
 
   .row-label {
     font-size: 13.5px;
@@ -132,7 +131,6 @@
     gap: 8px;
   }
 
-  /* ── Inputs ──────────────────────────────────────────────────── */
   input[type="number"],
   input[type="text"] {
     width: 100px;
@@ -148,8 +146,20 @@
   }
 
   input[type="text"].wide { width: 220px; }
+
   input[type="number"]:focus,
   input[type="text"]:focus { border-color: var(--accent); }
+
+  input.invalid { border-color: #f87171 !important; }
+
+  .validation-hint {
+    font-size: 10px;
+    color: #f87171;
+    margin-top: 2px;
+    display: none;
+  }
+
+  input.invalid ~ .validation-hint { display: block; }
 
   input[type="color"] {
     width: 36px;
@@ -174,7 +184,6 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* ── Select ──────────────────────────────────────────────────── */
   select {
     padding: 6px 10px;
     border-radius: 8px;
@@ -190,7 +199,6 @@
 
   select:focus { border-color: var(--accent); }
 
-  /* ── Toggle switch ───────────────────────────────────────────── */
   .toggle {
     position: relative;
     width: 42px;
@@ -230,9 +238,9 @@
     background: #fff;
   }
 
-  /* ── Buttons ─────────────────────────────────────────────────── */
   .actions {
     display: flex;
+    flex-wrap: wrap;
     gap: 10px;
     margin-top: 24px;
   }
@@ -251,6 +259,7 @@
   }
 
   .btn:active { transform: scale(.97); }
+  .btn:hover { border-color: rgba(255,255,255,.12); }
 
   .btn-primary {
     background: var(--accent);
@@ -259,7 +268,55 @@
   }
 
   .btn-primary:hover { filter: brightness(1.1); }
-  .btn:hover { border-color: rgba(255,255,255,.12); }
+
+  .btn-small {
+    padding: 6px 14px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .dirty-badge {
+    display: none;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--yellow);
+    border: 1px solid var(--yellow);
+    border-radius: 6px;
+    align-self: center;
+  }
+
+  .dirty-badge.show { display: inline-block; }
+
+  .toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+    align-items: center;
+  }
+
+  .toolbar .spacer { flex: 1; }
+
+  .preset-bar {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .preset-btn {
+    padding: 5px 12px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: border-color .15s;
+  }
+
+  .preset-btn:hover { border-color: rgba(255,255,255,.15); }
 
   .toast {
     position: fixed;
@@ -282,25 +339,58 @@
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
+  .hidden-file-input { display: none; }
+
+  .nav-links {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .nav-links a {
+    color: var(--accent);
+    font-size: 13px;
+    text-decoration: none;
+  }
+
+  .nav-links a:hover { text-decoration: underline; }
 </style>
 </head>
 
 <body>
 <div class="app">
   <header>
-    <h1>Now Playing — Settings</h1>
-    <p>Adjust the overlay appearance. Changes are saved to settings.json and auto-applied to the overlay.</p>
+    <h1>Now Playing - Settings</h1>
+    <p>Adjust the overlay appearance. Changes show up in the preview immediately.</p>
   </header>
 
-  <!-- ── Live preview ──────────────────────────────────────────── -->
+  <!-- Live preview -->
   <div class="preview-section">
     <div class="preview-frame">
       <iframe id="previewFrame" src="overlay.html?debug&preview"></iframe>
     </div>
-    <div class="preview-label">Live preview — changes apply in real time</div>
+    <div class="preview-label">Live preview (changes apply instantly)</div>
   </div>
 
-  <!-- ── Layout ────────────────────────────────────────────────── -->
+  <!-- Toolbar: presets, import/export, mode toggle -->
+  <div class="toolbar">
+    <div class="preset-bar">
+      <button class="preset-btn" data-preset="default">Default</button>
+      <button class="preset-btn" data-preset="minimal">Minimal</button>
+      <button class="preset-btn" data-preset="neon">Neon</button>
+      <button class="preset-btn" data-preset="glass">Glass</button>
+      <button class="preset-btn" data-preset="compact">Compact</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-small" id="importBtn">Import</button>
+    <button class="btn btn-small" id="exportBtn">Export</button>
+    <button class="btn btn-small" id="advancedToggle">Show advanced</button>
+  </div>
+
+  <input type="file" id="importFile" accept=".json" class="hidden-file-input" />
+
+  <!-- Layout -->
   <div class="section">
     <div class="section-title">Layout</div>
 
@@ -335,7 +425,7 @@
       </div>
     </div>
 
-    <div class="row">
+    <div class="row advanced-row">
       <div class="row-left">
         <div class="row-label">Art corner radius</div>
       </div>
@@ -346,53 +436,14 @@
     </div>
   </div>
 
-  <!-- ── Colors ────────────────────────────────────────────────── -->
+  <!-- Colors -->
   <div class="section">
     <div class="section-title">Colors</div>
 
     <div class="row">
       <div class="row-left">
-        <div class="row-label">Background</div>
-        <div class="row-desc">Pill background (supports rgba for transparency)</div>
-      </div>
-      <div class="row-right">
-        <input type="text" id="pillBackground" class="wide" />
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Blur strength</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="blurStrength" min="0" max="60" step="2" />
-        <span class="range-val" data-for="blurStrength"></span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Border color</div>
-        <div class="row-desc">Subtle border (rgba recommended)</div>
-      </div>
-      <div class="row-right">
-        <input type="text" id="borderColor" class="wide" />
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Text color</div>
-      </div>
-      <div class="row-right">
-        <input type="color" id="textColor" />
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
         <div class="row-label">Accent color mode</div>
-        <div class="row-desc">Auto extracts the dominant colour from album art</div>
+        <div class="row-desc">Auto picks the dominant color from the album art</div>
       </div>
       <div class="row-right">
         <select id="accentColorMode">
@@ -410,10 +461,55 @@
         <input type="color" id="accentColorFixed" />
       </div>
     </div>
+
+    <div class="row">
+      <div class="row-left">
+        <div class="row-label">Text color</div>
+      </div>
+      <div class="row-right">
+        <input type="color" id="textColor" />
+      </div>
+    </div>
+
+    <div class="row advanced-row">
+      <div class="row-left">
+        <div class="row-label">Background</div>
+        <div class="row-desc">Pill background (rgba format)</div>
+      </div>
+      <div class="row-right">
+        <div>
+          <input type="text" id="pillBackground" class="wide" />
+          <div class="validation-hint">Use rgba(r, g, b, a) format</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row advanced-row">
+      <div class="row-left">
+        <div class="row-label">Blur strength</div>
+      </div>
+      <div class="row-right">
+        <input type="range" id="blurStrength" min="0" max="60" step="2" />
+        <span class="range-val" data-for="blurStrength"></span>
+      </div>
+    </div>
+
+    <div class="row advanced-row">
+      <div class="row-left">
+        <div class="row-label">Border color</div>
+        <div class="row-desc">Subtle border (rgba format)</div>
+      </div>
+      <div class="row-right">
+        <div>
+          <input type="text" id="borderColor" class="wide" />
+          <div class="validation-hint">Use rgba(r, g, b, a) format</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <!-- ── Typography ────────────────────────────────────────────── -->
-  <div class="section">
+  <!-- Typography -->
+  <div class="section advanced">
     <div class="section-title">Typography</div>
 
     <div class="row">
@@ -462,12 +558,15 @@
         <div class="row-label">Font family</div>
       </div>
       <div class="row-right">
-        <input type="text" id="fontFamily" class="wide" />
+        <div>
+          <input type="text" id="fontFamily" class="wide" />
+          <div class="validation-hint">Use a valid CSS font-family value</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- ── Visibility ────────────────────────────────────────────── -->
+  <!-- Visibility -->
   <div class="section">
     <div class="section-title">Visibility</div>
 
@@ -504,7 +603,7 @@
     <div class="row">
       <div class="row-left">
         <div class="row-label">Show album in artist line</div>
-        <div class="row-desc">Appends "Artist -- Album" when available</div>
+        <div class="row-desc">Shows "Artist / Album" when available</div>
       </div>
       <label class="toggle">
         <input type="checkbox" id="showAlbumInArtist" />
@@ -522,6 +621,17 @@
       </label>
     </div>
 
+    <div class="row advanced-row">
+      <div class="row-left">
+        <div class="row-label">Dim when paused</div>
+        <div class="row-desc">Reduce opacity instead of hiding (only when hide-on-pause is off)</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="dimWhenPaused" />
+        <span class="toggle-track"></span>
+      </label>
+    </div>
+
     <div class="row">
       <div class="row-left">
         <div class="row-label">Hide when nothing playing</div>
@@ -533,10 +643,18 @@
     </div>
   </div>
 
-  <!-- ── Actions ───────────────────────────────────────────────── -->
+  <!-- Actions -->
   <div class="actions">
     <button class="btn btn-primary" id="saveBtn">Save settings</button>
+    <span class="dirty-badge" id="dirtyBadge">Unsaved changes</span>
+    <div class="spacer" style="flex:1"></div>
+    <button class="btn" id="revertBtn">Revert</button>
     <button class="btn" id="resetBtn">Reset to defaults</button>
+  </div>
+
+  <div class="nav-links">
+    <a href="status.html">Diagnostics</a>
+    <a href="overlay.html?debug">Preview overlay</a>
   </div>
 </div>
 
@@ -565,19 +683,110 @@
     showArtist: true,
     showAlbumInArtist: true,
     hideWhenPaused: false,
+    dimWhenPaused: false,
     hideWhenIdle: true,
     marqueeSpeed: 28,
     fontFamily: "'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif"
+  };
+
+  const PRESETS = {
+    default: { ...DEFAULTS },
+    minimal: {
+      ...DEFAULTS,
+      overlayWidth: 360,
+      pillRadius: 12,
+      artSize: 44,
+      artRadius: 8,
+      titleSize: 14,
+      artistSize: 11,
+      showEqualizer: false,
+      showAlbumInArtist: false,
+      blurStrength: 20,
+      pillBackground: "rgba(0, 0, 0, 0.65)"
+    },
+    neon: {
+      ...DEFAULTS,
+      overlayWidth: 460,
+      pillRadius: 22,
+      accentColorMode: "fixed",
+      accentColorFixed: "#00ffaa",
+      pillBackground: "rgba(0, 0, 0, 0.75)",
+      borderColor: "rgba(0, 255, 170, 0.15)",
+      blurStrength: 36,
+      titleSize: 17,
+      artistOpacity: 0.65
+    },
+    glass: {
+      ...DEFAULTS,
+      overlayWidth: 440,
+      pillRadius: 24,
+      pillBackground: "rgba(255, 255, 255, 0.06)",
+      borderColor: "rgba(255, 255, 255, 0.12)",
+      blurStrength: 40,
+      artRadius: 14,
+      artistOpacity: 0.55
+    },
+    compact: {
+      ...DEFAULTS,
+      overlayWidth: 320,
+      pillRadius: 14,
+      artSize: 40,
+      artRadius: 8,
+      titleSize: 13.5,
+      artistSize: 10.5,
+      showAlbumInArtist: false,
+      blurStrength: 22
+    }
   };
 
   const FIELDS = Object.keys(DEFAULTS);
   const BOOLEANS = FIELDS.filter(k => typeof DEFAULTS[k] === "boolean");
   const NUMBERS = FIELDS.filter(k => typeof DEFAULTS[k] === "number");
 
-  let settings = { ...DEFAULTS };
+  let savedSettings = { ...DEFAULTS };
+  let advancedMode = false;
 
-  /* ── DOM helpers ─────────────────────────────────────────────── */
   const $ = id => document.getElementById(id);
+
+  // -- Validation -------------------------------------------------
+
+  function isValidRgba(val) {
+    if (!val) return true;
+    return /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+))?\s*\)$/.test(val.trim())
+      || /^#[0-9a-f]{3,8}$/i.test(val.trim());
+  }
+
+  function isValidFont(val) {
+    if (!val) return true;
+    // Basic check: not empty and not obviously broken
+    return val.trim().length > 0 && !val.includes("{") && !val.includes("}");
+  }
+
+  function validateField(key, val) {
+    const el = $(key);
+    if (!el) return true;
+
+    let valid = true;
+    if (key === "pillBackground" || key === "borderColor") {
+      valid = isValidRgba(val);
+    } else if (key === "fontFamily") {
+      valid = isValidFont(val);
+    }
+
+    el.classList.toggle("invalid", !valid);
+    return valid;
+  }
+
+  function validateAll() {
+    const current = readUI();
+    let allValid = true;
+    for (const key of FIELDS) {
+      if (!validateField(key, current[key])) allValid = false;
+    }
+    return allValid;
+  }
+
+  // -- UI helpers -------------------------------------------------
 
   function populateUI(s) {
     for (const key of FIELDS) {
@@ -592,6 +801,8 @@
       } else {
         el.value = s[key];
       }
+      // Clear validation state
+      el.classList.remove("invalid");
     }
     updateConditionalVisibility(s);
   }
@@ -600,7 +811,7 @@
     const out = {};
     for (const key of FIELDS) {
       const el = $(key);
-      if (!el) { out[key] = settings[key]; continue; }
+      if (!el) { out[key] = savedSettings[key] ?? DEFAULTS[key]; continue; }
       if (BOOLEANS.includes(key)) {
         out[key] = el.checked;
       } else if (NUMBERS.includes(key)) {
@@ -616,20 +827,35 @@
     $("fixedColorRow").style.display = s.accentColorMode === "fixed" ? "" : "none";
   }
 
-  /* ── Load settings from server ───────────────────────────────── */
+  // -- Dirty state ------------------------------------------------
+
+  function isDirty() {
+    const current = readUI();
+    for (const key of FIELDS) {
+      if (current[key] !== savedSettings[key]) return true;
+    }
+    return false;
+  }
+
+  function updateDirtyBadge() {
+    $("dirtyBadge").classList.toggle("show", isDirty());
+  }
+
+  // -- Server communication ---------------------------------------
+
   async function loadSettings() {
     try {
       const res = await fetch("settings.json?_=" + Date.now(), { cache: "no-store" });
       if (res.ok) {
         const saved = await res.json();
-        settings = { ...DEFAULTS, ...saved };
+        savedSettings = { ...DEFAULTS, ...saved };
       }
     } catch { /* use defaults */ }
-    populateUI(settings);
+    populateUI(savedSettings);
+    updateDirtyBadge();
   }
 
-  /* ── Save settings via POST ──────────────────────────────────── */
-  async function saveSettings(data) {
+  async function saveToServer(data) {
     try {
       const res = await fetch("/save-settings", {
         method: "POST",
@@ -649,55 +875,126 @@
     setTimeout(() => t.classList.remove("show"), 2000);
   }
 
-  /* ── Live preview on every change ────────────────────────────── */
+  // -- Live preview -----------------------------------------------
+
   function liveUpdate() {
     const current = readUI();
     updateConditionalVisibility(current);
+    updateDirtyBadge();
 
-    // Push to preview iframe
     const iframe = $("previewFrame");
     if (iframe && iframe.contentWindow) {
       iframe.contentWindow.postMessage({ type: "settings-update", settings: current }, "*");
     }
   }
 
-  /* ── Wire up all inputs ──────────────────────────────────────── */
+  // -- Wire inputs ------------------------------------------------
+
   function wireInputs() {
     for (const key of FIELDS) {
       const el = $(key);
       if (!el) continue;
       const ev = (el.type === "range" || el.type === "checkbox") ? "input" : "change";
       el.addEventListener(ev, () => {
-        // Update range value displays
         if (el.type === "range") {
           const valEl = document.querySelector(`[data-for="${key}"]`);
           if (valEl) valEl.textContent = el.value;
         }
+        validateField(key, el.type === "checkbox" ? el.checked : el.value);
         liveUpdate();
       });
     }
   }
 
-  /* ── Save / Reset buttons ────────────────────────────────────── */
-  $("saveBtn").addEventListener("click", async () => {
+  // -- Presets ----------------------------------------------------
+
+  document.querySelectorAll("[data-preset]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const name = btn.dataset.preset;
+      const preset = PRESETS[name];
+      if (!preset) return;
+      populateUI(preset);
+      liveUpdate();
+      showToast("Preset: " + name + " (click Save to keep)");
+    });
+  });
+
+  // -- Import / Export --------------------------------------------
+
+  $("exportBtn").addEventListener("click", () => {
     const data = readUI();
-    const ok = await saveSettings(data);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nowplaying-settings.json";
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Settings exported");
+  });
+
+  $("importBtn").addEventListener("click", () => {
+    $("importFile").click();
+  });
+
+  $("importFile").addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        const merged = { ...DEFAULTS, ...imported };
+        populateUI(merged);
+        liveUpdate();
+        showToast("Settings imported (click Save to keep)");
+      } catch {
+        showToast("Invalid JSON file");
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = "";
+  });
+
+  // -- Advanced mode toggle ---------------------------------------
+
+  $("advancedToggle").addEventListener("click", () => {
+    advancedMode = !advancedMode;
+    document.body.classList.toggle("show-advanced", advancedMode);
+    $("advancedToggle").textContent = advancedMode ? "Hide advanced" : "Show advanced";
+  });
+
+  // -- Save / Revert / Reset buttons -----------------------------
+
+  $("saveBtn").addEventListener("click", async () => {
+    if (!validateAll()) {
+      showToast("Fix the highlighted fields first");
+      return;
+    }
+    const data = readUI();
+    const ok = await saveToServer(data);
     if (ok) {
-      settings = data;
+      savedSettings = { ...data };
+      updateDirtyBadge();
       showToast("Settings saved");
     } else {
-      showToast("Failed to save — is the server running?");
+      showToast("Failed to save. Is the server running?");
     }
   });
 
-  $("resetBtn").addEventListener("click", () => {
-    settings = { ...DEFAULTS };
-    populateUI(settings);
+  $("revertBtn").addEventListener("click", () => {
+    populateUI(savedSettings);
     liveUpdate();
-    showToast("Reset to defaults (click Save to persist)");
+    showToast("Reverted to last saved state");
   });
 
-  /* ── Init ────────────────────────────────────────────────────── */
+  $("resetBtn").addEventListener("click", () => {
+    populateUI(DEFAULTS);
+    liveUpdate();
+    showToast("Reset to defaults (click Save to keep)");
+  });
+
+  // -- Init -------------------------------------------------------
   wireInputs();
   loadSettings();
 })();
