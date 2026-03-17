@@ -27,9 +27,6 @@ DATA_FILES = [
     "LICENSE",
 ]
 
-# Default settings to include if no settings.json exists yet
-INCLUDE_SETTINGS = False
-
 
 def check_pyinstaller():
     try:

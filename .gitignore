@@ -4,8 +4,13 @@ __pycache__/
 nowplaying.json
 nowplaying.json.tmp
 cover.jpg
+cover.jpg.tmp
+settings.json
 settings.json.tmp
 .vscode/
 dist/
 build/
 *.spec
+*.log
+*.exe
+.tmp_download.zip

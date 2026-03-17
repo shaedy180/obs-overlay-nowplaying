@@ -15,24 +15,30 @@ import threading
 if getattr(sys, "frozen", False):
     _exe_dir = os.path.dirname(sys.executable)
     os.chdir(_exe_dir)
-    # Also fix sys.path so imports of server/nowplaying find the
-    # right ROOT when they check getattr(sys, 'frozen', False)
 else:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
+def _get_version():
+    vf = os.path.join(os.getcwd(), "version.txt")
+    if os.path.isfile(vf):
+        with open(vf) as f:
+            return f.read().strip()
+    return "unknown"
+
+
 def run_server():
     """Start the HTTP server in a background thread."""
-    # Import here so the module-level code in server.py uses the right cwd
     sys.argv = [sys.argv[0]]  # strip extra args
     import server
     server.main()
 
 
 def main():
+    version = _get_version()
     print()
     print("  ======================================")
-    print("    Now Playing - OBS Overlay")
+    print(f"    Now Playing - OBS Overlay v{version}")
     print("  ======================================")
     print()
 
@@ -41,11 +47,23 @@ def main():
     t.start()
 
     # Run the extractor on the main thread (needs asyncio)
-    import nowplaying
     try:
+        import nowplaying
         asyncio.run(nowplaying.main())
     except KeyboardInterrupt:
         print("\nStopped.")
+    except ImportError as exc:
+        if "winrt" in str(exc).lower():
+            print("\n  [ERROR] WinRT packages are not available.")
+            if not getattr(sys, "frozen", False):
+                print("  Run: pip install -r requirements.txt")
+            else:
+                print("  Try re-downloading the latest release.")
+        else:
+            raise
+    except Exception as exc:
+        print(f"\n  [ERROR] {exc}", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

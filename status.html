@@ -263,7 +263,7 @@
 
   async function refresh() {
     try {
-      const res = await fetch("/api/status", { method: "POST", cache: "no-store" });
+      const res = await fetch("/api/status?_=" + Date.now(), { cache: "no-store" });
       if (!res.ok) throw new Error("status endpoint failed");
       const d = await res.json();
 

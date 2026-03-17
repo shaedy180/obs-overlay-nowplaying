@@ -40,6 +40,9 @@ def _write_json(payload: dict) -> None:
     os.replace(tmp, JSON_FILE)
 
 
+MAX_COVER_SIZE = 10 * 1024 * 1024  # 10 MB
+
+
 async def _save_cover(media_props) -> bool:
     """Extract album-art thumbnail from the media session and save as cover.jpg."""
     try:
@@ -49,7 +52,7 @@ async def _save_cover(media_props) -> bool:
 
         stream = await ref.open_read_async()
         size = stream.size
-        if not size or size == 0:
+        if not size or size == 0 or size > MAX_COVER_SIZE:
             return False
 
         from winrt.windows.storage.streams import DataReader
@@ -68,8 +71,11 @@ async def _save_cover(media_props) -> bool:
         if len(data) < 64:
             return False
 
-        with open(COVER_FILE, "wb") as f:
+        # Atomic write
+        tmp = COVER_FILE + ".tmp"
+        with open(tmp, "wb") as f:
             f.write(data)
+        os.replace(tmp, COVER_FILE)
         return True
 
     except Exception as exc:
