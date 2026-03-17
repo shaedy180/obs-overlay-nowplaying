@@ -7,14 +7,24 @@ browsers, and pretty much anything that shows up in the Windows volume flyout.
 ![Glass pill overlay with album art, title, artist, and animated EQ bars](https://via.placeholder.com/480x120.png?text=Now+Playing+Overlay)
 
 
-## Quickstart
+## Quickstart (recommended)
 
-1. Double-click `start.bat`.
-2. It sets up a Python venv, installs deps, and starts everything.
-3. In OBS, add a **Browser Source** with URL `http://127.0.0.1:8000/overlay.html`,
+1. Download the latest `NowPlaying.zip` from
+   [Releases](https://github.com/shaedy180/obs-overlay-nowplaying/releases/latest).
+2. Extract the zip anywhere.
+3. Double-click `start.bat`.
+4. In OBS, add a **Browser Source** with URL `http://127.0.0.1:8000/overlay.html`,
    width 480, height 120.  Done.
 
-The settings page opens automatically in your browser after launch.
+No Python, no terminal, no dependencies to install. The settings page opens
+automatically in your browser after launch.
+
+
+## Updating
+
+The tool includes a self-updater. Run `update.py` (or `start.bat --update`
+in the source version) to check for and download new releases. Your
+settings are preserved across updates.
 
 
 ## What it does
@@ -34,23 +44,43 @@ The settings page opens automatically in your browser after launch.
 ## Requirements
 
 - Windows 10 or 11
-- Python 3.10+
 - OBS Studio (or anything with a browser source)
 
+If you use the standalone .exe release, that's all you need. For running
+from source you also need Python 3.10+.
 
-## Manual setup
 
-If you don't want to use `start.bat`, open two terminals:
+## Running from source
+
+If you prefer running the Python source directly (for development or if you
+want to modify things):
 
 ```
-# Terminal 1: create venv and start the media extractor
+# Option A: use the launcher
+# (creates venv, installs deps, starts everything)
+start.bat
+
+# Option B: manual setup
 python -m venv venv
 venv\Scripts\pip install -r requirements.txt
+
+# Terminal 1: media extractor
 venv\Scripts\python nowplaying.py
 
-# Terminal 2: start the web server
+# Terminal 2: web server
 venv\Scripts\python server.py
 ```
+
+
+## Building the .exe yourself
+
+```
+pip install pyinstaller
+pip install -r requirements.txt
+python build.py
+```
+
+This creates `dist/NowPlaying.zip` with the standalone build.
 
 
 ## OBS setup
@@ -80,14 +110,19 @@ import/export your settings as a JSON file.
 
 | File              | What it does                                          |
 |-------------------|-------------------------------------------------------|
+| `NowPlaying.exe`  | Standalone build (in releases, runs server + extractor)|
 | `nowplaying.py`   | Polls Windows media controls, writes `nowplaying.json` and `cover.jpg` |
 | `server.py`       | Local HTTP server with no-cache headers and a settings save endpoint |
+| `app.py`          | Combined entry point used by PyInstaller               |
 | `overlay.html`    | The overlay (glass pill, EQ bars, crossfade, demo mode) |
 | `settings.html`   | Visual settings editor with live preview and presets  |
 | `status.html`     | Diagnostics page (health checks, OBS URL, last track) |
 | `settings.json`   | Your saved settings (auto-generated)                  |
-| `start.bat`       | One-click launcher                                    |
-| `requirements.txt`| Python dependencies (winrt packages)                  |
+| `update.py`       | Self-updater, downloads latest release from GitHub    |
+| `build.py`        | Build script for creating the .exe with PyInstaller   |
+| `start.bat`       | One-click launcher (works with both .exe and source)  |
+| `version.txt`     | Current version number                                |
+| `requirements.txt`| Python dependencies (winrt packages, source only)     |
 
 
 ## How it works
@@ -122,10 +157,12 @@ Some apps don't provide album art through the Windows media API.
 The overlay shows a gradient placeholder in that case.
 
 **The extractor crashes on startup**
-Make sure the dependencies are installed:
+If running from source, make sure the dependencies are installed:
 ```
 venv\Scripts\pip install -r requirements.txt
 ```
+If using the .exe release, try downloading the latest version from the
+releases page.
 
 **Port 8000 is already taken**
 Pass a different port: `venv\Scripts\python server.py 9000`, then update
