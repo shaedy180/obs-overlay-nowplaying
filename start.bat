@@ -96,8 +96,19 @@ echo   WinRT packages OK.
 echo   Starting media extractor ...
 start "NowPlaying-Extractor" /min venv\Scripts\python.exe nowplaying.py
 
-REM Give the extractor a moment to write the first JSON
-timeout /t 2 /nobreak >nul
+REM Wait for the extractor to create nowplaying.json (up to 15 seconds)
+set "WAIT_COUNT=0"
+:wait_for_json
+if exist "nowplaying.json" goto :extractor_ready
+if %WAIT_COUNT% GEQ 30 (
+    echo   [!] Extractor did not produce data yet. Starting server anyway.
+    goto :extractor_ready
+)
+timeout /t 1 /nobreak >nul
+set /a WAIT_COUNT+=1
+goto :wait_for_json
+
+:extractor_ready
 
 echo   Starting HTTP server ...
 echo.
