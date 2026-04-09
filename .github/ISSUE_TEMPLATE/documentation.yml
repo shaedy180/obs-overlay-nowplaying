@@ -1,0 +1,33 @@
+name: Documentation Improvement
+description: Suggest improvements or report issues with the documentation
+labels: ["documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us improve the documentation.
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: Which page, file, or section is this about?
+      placeholder: e.g. README.md, setup guide, or configuration docs
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What is missing, incorrect, or could be improved?
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Change
+      description: If you have a specific suggestion, describe it here.
+    validations:
+      required: false
