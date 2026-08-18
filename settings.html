@@ -1,1002 +1,570 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Now Playing - Settings</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="/favicon.ico">
+<title>Now Playing Settings</title>
 <style>
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --bg: #0e0e14;
-    --surface: #18181f;
-    --surface2: #1e1e28;
-    --border: rgba(255,255,255,.06);
-    --text: #e8e8ee;
-    --text2: rgba(255,255,255,.45);
-    --accent: #8264f0;
-    --accent-dim: rgba(130,100,240,.15);
-    --green: #34d399;
-    --yellow: #fbbf24;
-    --radius: 12px;
+    --bg: #020202; --panel: #0a0a0a; --panel2: #111; --panel3: #161616;
+    --border: rgba(255,255,255,.16); --text: #e8e8e8; --muted: #777;
+    --accent: #39ff14; --accent2: #20c900; --green: #39ff14; --red: #ff3d00; --yellow: #e8e8e8;
+    --radius: 0; --shadow: none;
   }
-
+  html { color-scheme: dark; }
   body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif;
-    line-height: 1.5;
-    -webkit-font-smoothing: antialiased;
+    min-height: 100vh; background: var(--bg);
+    color: var(--text); font-family: 'Cascadia Mono','JetBrains Mono',Consolas,monospace;
+    font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased;
   }
+  button, input, select, textarea { font: inherit; }
+  button { color: inherit; }
+  .hidden { display: none !important; }
 
-  .app {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: 32px 24px 80px;
+  .topbar {
+    height: 64px; padding: 0 28px; border-bottom: 1px solid var(--border);
+    background: #020202;
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    position: sticky; top: 0; z-index: 50;
   }
+  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand-mark { width: 30px; height: 30px; border: 1px solid var(--border); background: #020202 url('/assets/app-icon.png') center/cover no-repeat; display: grid; place-items: center; }
+  .brand h1 { font-size: 16px; letter-spacing: -.02em; }
+  .brand small { display: block; color: var(--muted); font-size: 10px; font-weight: 500; }
+  .top-actions { display: flex; align-items: center; gap: 9px; position: relative; }
+  .save-state { color: var(--muted); font-size: 12px; min-width: 70px; text-align: right; }
+  .save-state.saved { color: var(--green); }
+  .save-state.error { color: var(--red); }
+  .status-button { border: 1px solid var(--border); border-radius: 999px; background: var(--panel); padding: 7px 11px; display: flex; align-items: center; gap: 7px; cursor: pointer; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--yellow); box-shadow: 0 0 8px currentColor; }
+  .status-dot.ok { color: var(--green); background: var(--green); }
+  .status-dot.bad { color: var(--red); background: var(--red); }
+  .status-text { font-size: 12px; max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .popover { position: absolute; top: 44px; right: 0; width: 330px; border: 1px solid var(--border); border-radius: 0; background: #111; padding: 15px; box-shadow: none; z-index: 60; }
+  .diag-grid { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 12px; margin-bottom: 13px; }
+  .diag-grid span:nth-child(odd) { color: var(--muted); }
 
-  header { margin-bottom: 28px; }
+  .workspace { max-width: 1480px; margin: 0 auto; padding: 26px 28px 70px; display: grid; grid-template-columns: minmax(520px, 1.12fr) minmax(440px, .88fr); gap: 24px; align-items: start; }
+  .preview-column { position: sticky; top: 88px; min-width: 0; }
+  .editor-column { min-width: 0; }
+  .panel { background: rgba(21,21,29,.94); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+  .panel-head { padding: 15px 17px; display: flex; justify-content: space-between; align-items: center; gap: 14px; border-bottom: 1px solid var(--border); }
+  .panel-head h2 { font-size: 13px; letter-spacing: .01em; }
+  .panel-head p { color: var(--muted); font-size: 11px; }
+  .preview-toolbar { display: flex; gap: 5px; flex-wrap: wrap; }
+  .chip, .icon-btn, .btn { border: 1px solid var(--border); background: var(--panel2); border-radius: 9px; cursor: pointer; transition: .16s ease; }
+  .chip { font-size: 10px; padding: 5px 8px; color: var(--muted); }
+  .chip:hover, .chip.active, .icon-btn:hover, .btn:hover { border-color: rgba(255,255,255,.18); color: var(--text); }
+  .chip.active { background: #10200d; border-color: var(--accent); color: var(--accent); }
+  .icon-btn { padding: 7px 10px; font-size: 12px; }
+  .btn { padding: 9px 12px; font-weight: 620; font-size: 12px; color: var(--text); text-decoration: none; }
+  .btn:visited { color: var(--text); }
+  .btn.primary { background: var(--accent); color: #020202; border-color: var(--accent); }
+  .btn.danger { color: var(--red); }
+  .btn:disabled { opacity: .45; cursor: default; }
+  .preview-stage { min-height: 270px; padding: 22px; display: flex; align-items: center; justify-content: center; overflow: auto; position: relative; }
+  .preview-stage.dark { background: #050505; }
+  .preview-stage.light { background: #dedee5; }
+  .preview-stage.colorful { background: linear-gradient(145deg,#ff3d00,#003f36 48%,#39ff14); }
+  .preview-stage.gameplay { background: radial-gradient(circle at 28% 28%,#5f9f43 0 7%,transparent 8%), linear-gradient(155deg,#182d43,#263920 48%,#131923); }
+  .preview-stage.grid { background-color: #bdbdc2; background-image: linear-gradient(45deg,#929299 25%,transparent 25%),linear-gradient(-45deg,#929299 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#929299 75%),linear-gradient(-45deg,transparent 75%,#929299 75%); background-size: 20px 20px; background-position: 0 0,0 10px,10px -10px,-10px 0; }
+  .preview-viewport { transform-origin: center; flex: none; overflow: hidden; outline: 1px dashed rgba(255,255,255,.22); position: relative; }
+  .preview-viewport iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; color-scheme: dark; }
+  .preview-footer { padding: 13px 16px; border-top: 1px solid var(--border); display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+  .preview-footer .spacer { flex: 1; }
+  .viewport-input { display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 10px; }
+  .viewport-input input { width: 58px; background: var(--panel2); border: 1px solid var(--border); border-radius: 7px; color: var(--text); padding: 5px; }
+  .clip-alert { margin: 12px 0 0; background: #1b0802; border: 1px solid var(--red); color: #ffb29a; border-radius: 0; padding: 9px 11px; font-size: 11px; }
 
-  header h1 {
-    font-size: 22px;
-    font-weight: 700;
-    letter-spacing: -.02em;
+  .obs-card { margin-top: 14px; padding: 15px; }
+  .obs-grid { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; }
+  .obs-url { font-family: inherit; font-size: 11px; color: var(--accent); word-break: break-all; margin-top: 4px; }
+  .obs-size { font-size: 23px; font-weight: 760; letter-spacing: -.04em; white-space: nowrap; }
+  .obs-size small { display: block; font-size: 10px; color: var(--muted); font-weight: 500; text-align: right; letter-spacing: 0; }
+  .obs-actions { margin-top: 12px; display: flex; gap: 7px; }
+
+  .preset-panel { padding: 16px; margin-bottom: 14px; }
+  .section-kicker { color: var(--muted); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; }
+  .preset-heading { display: flex; justify-content: space-between; gap: 12px; align-items: end; margin-bottom: 12px; }
+  .preset-heading h2 { font-size: 15px; margin-top: 3px; }
+  .preset-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .preset-card { min-height: 91px; padding: 9px; border: 1px solid var(--border); border-radius: 11px; background: var(--panel2); cursor: pointer; text-align: left; }
+  .preset-card:hover, .preset-card.active { border-color: var(--accent); }
+  .preset-card.active { box-shadow: inset 3px 0 0 var(--accent); }
+  .preset-mini { height: 39px; border-radius: 8px; padding: 6px; display: flex; gap: 5px; align-items: center; background: rgba(6,6,10,.72); margin-bottom: 7px; }
+  .preset-mini i { display: block; width: 26px; height: 26px; border-radius: 0; background: var(--accent); }
+  .preset-mini b { height: 5px; border-radius: 3px; background: white; width: 43px; box-shadow: 0 10px 0 rgba(255,255,255,.35); }
+  .preset-card[data-preset="terminal"] .preset-mini { border-color: var(--accent); }
+  .preset-card[data-preset="terminal"] .preset-mini i { display: none; }
+  .preset-card[data-preset="signal"] .preset-mini { box-shadow: inset 0 0 0 1px var(--accent),0 0 12px rgba(57,255,20,.18); }
+  .preset-card[data-preset="outline"] .preset-mini i { background: transparent; border: 1px solid var(--accent); }
+  .preset-card[data-preset="compact"] .preset-mini { height: 31px; margin-top: 4px; margin-bottom: 11px; }
+  .preset-name { font-size: 11px; font-weight: 650; }
+
+  .tabs-panel { overflow: hidden; }
+  .tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--border); padding: 0 10px; }
+  .tab { border: 0; background: transparent; color: var(--muted); padding: 14px 10px 12px; font-size: 11px; font-weight: 650; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+  .tab.active { color: var(--text); border-color: var(--accent); }
+  .tab-actions { padding: 10px 15px 0; display: flex; justify-content: flex-end; }
+  .tab-page { display: none; padding: 7px 18px 18px; }
+  .tab-page.active { display: block; }
+  .group-title { margin-top: 16px; margin-bottom: 5px; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; }
+  .control-row { display: grid; grid-template-columns: minmax(150px,1fr) minmax(180px,1.1fr); gap: 16px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--border); }
+  .control-row:last-child { border: 0; }
+  .label { font-size: 12px; font-weight: 580; }
+  .hint { color: var(--muted); font-size: 10px; margin-top: 2px; line-height: 1.35; }
+  .control { display: flex; justify-content: flex-end; gap: 8px; align-items: center; min-width: 0; }
+  input[type="range"] { accent-color: var(--accent); width: min(190px,100%); }
+  input[type="color"] { width: 37px; height: 28px; border: 1px solid var(--border); border-radius: 7px; background: transparent; padding: 2px; }
+  input[type="text"], input[type="number"], select, textarea { width: 100%; min-width: 0; border: 1px solid var(--border); border-radius: 8px; color: var(--text); background: var(--panel2); padding: 7px 8px; outline: 0; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { min-height: 110px; resize: vertical; font-family: 'Cascadia Code',Consolas,monospace; font-size: 11px; }
+  .value { min-width: 44px; color: var(--muted); font-size: 10px; text-align: right; }
+  .toggle { width: 36px; height: 21px; position: relative; display: inline-block; }
+  .toggle input { opacity: 0; position: absolute; }
+  .toggle span { position: absolute; inset: 0; background: #272727; border-radius: 0; cursor: pointer; transition: .18s; }
+  .toggle span::after { content: ''; position: absolute; width: 15px; height: 15px; border-radius: 50%; background: #aaa; top: 3px; left: 3px; transition: .18s; }
+  .toggle input:checked + span { background: var(--accent2); }
+  .toggle input:checked + span::after { transform: translateX(15px); background: white; }
+  .source-list { width: 100%; display: grid; gap: 6px; }
+  .source-item { display: flex; justify-content: space-between; gap: 9px; font-size: 11px; padding: 6px 8px; background: var(--panel2); border-radius: 7px; }
+  .source-item label { color: var(--muted); }
+  .advanced-actions { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 14px; }
+  .notice { padding: 9px 10px; border: 1px solid var(--border); border-radius: 9px; color: var(--muted); font-size: 10px; margin-top: 10px; }
+  .release-notes { white-space: pre-wrap; max-height: 180px; overflow: auto; margin-top: 8px; font-family: inherit; font-size: 10px; color: var(--muted); }
+
+  .wizard { max-width: 920px; margin: 46px auto; padding: 0 22px 50px; }
+  .wizard-head { text-align: center; margin-bottom: 24px; }
+  .wizard-head .brand-mark { margin: 0 auto 14px; width: 44px; height: 44px; }
+  .wizard-head h1 { font-size: 26px; letter-spacing: -.04em; }
+  .wizard-head p { color: var(--muted); margin-top: 6px; }
+  .wizard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .wizard-card { padding: 18px; min-height: 170px; }
+  .wizard-step { color: var(--accent); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; font-weight: 750; }
+  .wizard-card h2 { font-size: 15px; margin: 5px 0 12px; }
+  .wizard-status { font-size: 18px; font-weight: 720; margin: 15px 0 6px; }
+  .wizard-status.good { color: var(--green); }
+  .wizard-card p { color: var(--muted); font-size: 11px; }
+  .wizard-presets { display: flex; gap: 6px; flex-wrap: wrap; }
+  .wizard-obs { padding: 9px; border-radius: 9px; background: var(--panel2); font-family: Consolas,monospace; font-size: 10px; word-break: break-all; }
+  .wizard-size { color: var(--green); font-size: 19px; font-weight: 740; margin: 10px 0; }
+  .wizard-field-label { display: block; color: var(--accent); font-size: 9px; letter-spacing: .1em; margin: 8px 0 4px; }
+  .wizard-dimensions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+  .wizard-dimensions div { border: 1px solid var(--border); padding: 8px; }
+  .wizard-dimensions strong { display: block; color: var(--accent); font-size: 18px; }
+  .wizard-demo { height: 150px; margin-top: 12px; border: 1px solid var(--border); background: #050505; overflow: hidden; }
+  .wizard-demo iframe { width: 100%; height: 100%; border: 0; }
+  .finish-row { margin-top: 15px; display: flex; justify-content: center; }
+
+  .data-popover { position: absolute; z-index: 30; left: 16px; bottom: 58px; width: 330px; padding: 13px; border: 1px solid var(--border); border-radius: 0; background: #0a0a0a; box-shadow: none; }
+  .data-popover h3 { font-size: 12px; margin-bottom: 9px; }
+  .data-popover input { margin-bottom: 7px; }
+  .cover-drop { border: 1px dashed rgba(255,255,255,.2); border-radius: 8px; padding: 10px; text-align: center; color: var(--muted); font-size: 10px; cursor: pointer; }
+  .toast { position: fixed; right: 22px; bottom: 22px; z-index: 100; border: 1px solid var(--accent); border-radius: 0; padding: 10px 13px; background: #0a0a0a; box-shadow: none; font-size: 12px; opacity: 0; transform: translateY(8px); pointer-events: none; transition: .2s; }
+  .toast.show { opacity: 1; transform: none; }
+
+  @media (max-width: 1040px) {
+    .workspace { grid-template-columns: 1fr; max-width: 780px; }
+    .preview-column { position: static; }
   }
-
-  header p {
-    margin-top: 6px;
-    font-size: 13px;
-    color: var(--text2);
+  @media (max-width: 620px) {
+    .topbar { padding: 0 14px; }
+    .status-text { max-width: 110px; }
+    .workspace { padding: 16px 12px 55px; }
+    .control-row { grid-template-columns: 1fr; gap: 7px; }
+    .control { justify-content: stretch; }
+    .preset-grid, .wizard-grid { grid-template-columns: 1fr 1fr; }
+    .wizard { margin-top: 25px; }
   }
-
-  .preview-section { margin-bottom: 28px; }
-
-  .preview-frame {
-    width: 100%;
-    height: 130px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: #0a0a10;
-    overflow: hidden;
+  @media (max-width: 480px) {
+    .topbar { gap: 8px; }
+    .brand small, .save-state { display: none; }
+    .brand h1 { font-size: 14px; }
+    .status-text { max-width: 72px; }
+    .wizard-grid { grid-template-columns: 1fr; }
   }
-
-  .preview-frame iframe {
-    width: 100%;
-    height: 100%;
-    border: none;
-  }
-
-  .preview-label {
-    margin-top: 8px;
-    font-size: 11px;
-    color: var(--text2);
-    text-align: center;
-  }
-
-  .section {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-
-  .section.advanced { display: none; }
-  body.show-advanced .section.advanced { display: block; }
-
-  .section-title {
-    font-size: 13px;
-    font-weight: 650;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    color: var(--text2);
-    margin-bottom: 16px;
-  }
-
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding: 10px 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .row:last-child { border-bottom: none; }
-  .row.advanced-row { display: none; }
-  body.show-advanced .row.advanced-row { display: flex; }
-
-  .row-label {
-    font-size: 13.5px;
-    font-weight: 500;
-    flex-shrink: 0;
-  }
-
-  .row-desc {
-    font-size: 11.5px;
-    color: var(--text2);
-    margin-top: 2px;
-  }
-
-  .row-left {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-  }
-
-  .row-right {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  input[type="number"],
-  input[type="text"] {
-    width: 100px;
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    transition: border-color .2s;
-  }
-
-  input[type="text"].wide { width: 220px; }
-
-  input[type="number"]:focus,
-  input[type="text"]:focus { border-color: var(--accent); }
-
-  input.invalid { border-color: #f87171 !important; }
-
-  .validation-hint {
-    font-size: 10px;
-    color: #f87171;
-    margin-top: 2px;
-    display: none;
-  }
-
-  input.invalid ~ .validation-hint { display: block; }
-
-  input[type="color"] {
-    width: 36px;
-    height: 30px;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: var(--surface2);
-    cursor: pointer;
-    padding: 2px;
-  }
-
-  input[type="range"] {
-    width: 120px;
-    accent-color: var(--accent);
-  }
-
-  .range-val {
-    font-size: 12px;
-    color: var(--text2);
-    width: 36px;
-    text-align: right;
-    font-variant-numeric: tabular-nums;
-  }
-
-  select {
-    padding: 6px 10px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    cursor: pointer;
-    transition: border-color .2s;
-  }
-
-  select:focus { border-color: var(--accent); }
-
-  .toggle {
-    position: relative;
-    width: 42px;
-    height: 24px;
-    flex-shrink: 0;
-  }
-
-  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
-
-  .toggle-track {
-    position: absolute;
-    inset: 0;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    cursor: pointer;
-    transition: background .2s, border-color .2s;
-  }
-
-  .toggle-track::after {
-    content: '';
-    position: absolute;
-    top: 3px; left: 3px;
-    width: 16px; height: 16px;
-    border-radius: 50%;
-    background: var(--text2);
-    transition: transform .2s, background .2s;
-  }
-
-  .toggle input:checked + .toggle-track {
-    background: var(--accent);
-    border-color: var(--accent);
-  }
-
-  .toggle input:checked + .toggle-track::after {
-    transform: translateX(18px);
-    background: #fff;
-  }
-
-  .actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 24px;
-  }
-
-  .btn {
-    padding: 10px 22px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-    color: var(--text);
-    font-size: 13.5px;
-    font-weight: 550;
-    font-family: inherit;
-    cursor: pointer;
-    transition: background .15s, border-color .15s, transform .1s;
-  }
-
-  .btn:active { transform: scale(.97); }
-  .btn:hover { border-color: rgba(255,255,255,.12); }
-
-  .btn-primary {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: #fff;
-  }
-
-  .btn-primary:hover { filter: brightness(1.1); }
-
-  .btn-small {
-    padding: 6px 14px;
-    font-size: 12px;
-    border-radius: 8px;
-  }
-
-  .dirty-badge {
-    display: none;
-    padding: 4px 10px;
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--yellow);
-    border: 1px solid var(--yellow);
-    border-radius: 6px;
-    align-self: center;
-  }
-
-  .dirty-badge.show { display: inline-block; }
-
-  .toolbar {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 20px;
-    align-items: center;
-  }
-
-  .toolbar .spacer { flex: 1; }
-
-  .preset-bar {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .preset-btn {
-    padding: 5px 12px;
-    border-radius: 7px;
-    border: 1px solid var(--border);
-    background: var(--surface2);
-    color: var(--text);
-    font-size: 12px;
-    font-family: inherit;
-    cursor: pointer;
-    transition: border-color .15s;
-  }
-
-  .preset-btn:hover { border-color: rgba(255,255,255,.15); }
-
-  .toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(20px);
-    padding: 10px 22px;
-    background: var(--accent);
-    color: #fff;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 550;
-    opacity: 0;
-    transition: opacity .25s, transform .25s;
-    pointer-events: none;
-    z-index: 999;
-  }
-
-  .toast.show {
-    opacity: 1;
-    transform: translateX(-50%) translateY(0);
-  }
-
-  .hidden-file-input { display: none; }
-
-  .nav-links {
-    display: flex;
-    gap: 16px;
-    margin-top: 16px;
-  }
-
-  .nav-links a {
-    color: var(--accent);
-    font-size: 13px;
-    text-decoration: none;
-  }
-
-  .nav-links a:hover { text-decoration: underline; }
+  .panel, .chip, .icon-btn, .btn, .status-button, .popover, .preset-card, .preset-mini,
+  input[type="color"], input[type="text"], input[type="number"], select, textarea,
+  .source-item, .notice, .wizard-obs, .cover-drop, .viewport-input input { border-radius: 0; box-shadow: none; }
+  .panel { background: var(--panel); }
+  .popover { background: var(--panel2); }
+  .status-dot { border-radius: 0; box-shadow: none; }
+  .section-kicker, .group-title, .wizard-step { color: var(--accent); }
+  .toggle span::after { border-radius: 0; }
 </style>
 </head>
-
 <body>
-<div class="app">
-  <header>
-    <h1>Now Playing - Settings</h1>
-    <p>Adjust the overlay appearance. Changes show up in the preview immediately.</p>
+<section id="wizard" class="wizard hidden">
+  <div class="wizard-head"><div class="brand-mark"></div><h1>Set up Now Playing</h1><p>Four quick checks, then your OBS overlay is ready.</p></div>
+  <div class="wizard-grid">
+    <article class="panel wizard-card"><div class="wizard-step">1. Media detection</div><h2>Choose something to play</h2><div id="wizardMedia" class="wizard-status">Checking...</div><p id="wizardMediaDetail">Looking for a Windows media session.</p></article>
+    <article class="panel wizard-card"><div class="wizard-step">2. Customize</div><h2>Pick a starting style</h2><div id="wizardPresets" class="wizard-presets"></div><p style="margin-top:12px">You can fine tune every value later.</p></article>
+    <article class="panel wizard-card"><div class="wizard-step">3. Add to OBS</div><h2>Browser Source</h2><span class="wizard-field-label">URL</span><div class="wizard-obs obs-url-text"></div><div class="wizard-dimensions"><div><span class="wizard-field-label">WIDTH</span><strong id="wizardWidth"></strong></div><div><span class="wizard-field-label">HEIGHT</span><strong id="wizardHeight"></strong></div></div><button class="btn" data-copy="url">Copy URL</button><button class="btn" data-copy="width">Copy width</button><button class="btn" data-copy="height">Copy height</button></article>
+    <article class="panel wizard-card"><div class="wizard-step">4. Test</div><h2>Try a track change</h2><p>Run the overlay here without completing setup.</p><button id="wizardTest" class="btn" style="margin-top:18px">Test overlay</button><div id="wizardDemo" class="wizard-demo hidden"><iframe id="wizardTestFrame" src="overlay.html?preview&demo" title="Wizard overlay test"></iframe></div></article>
+  </div>
+  <div class="finish-row"><button id="finishSetup" class="btn primary">Finish setup</button></div>
+</section>
+
+<main id="dashboard" class="hidden">
+  <header class="topbar">
+    <div class="brand"><div class="brand-mark"></div><div><h1>Now Playing</h1><small>OBS overlay editor</small></div></div>
+    <div class="top-actions">
+      <span id="saveState" class="save-state">Loading...</span>
+      <button id="undoBtn" class="icon-btn" disabled>Undo</button>
+      <button id="statusButton" class="status-button"><span id="statusDot" class="status-dot"></span><span id="statusText" class="status-text">Connecting...</span></button>
+      <div id="diagnostics" class="popover hidden"><div id="diagGrid" class="diag-grid"></div><button id="restartDetector" class="btn">Restart detector</button></div>
+    </div>
   </header>
 
-  <!-- Live preview -->
-  <div class="preview-section">
-    <div class="preview-frame">
-      <iframe id="previewFrame" src="overlay.html?debug&preview"></iframe>
-    </div>
-    <div class="preview-label">Live preview (changes apply instantly)</div>
-  </div>
-
-  <!-- Toolbar: presets, import/export, mode toggle -->
-  <div class="toolbar">
-    <div class="preset-bar">
-      <button class="preset-btn" data-preset="default">Default</button>
-      <button class="preset-btn" data-preset="minimal">Minimal</button>
-      <button class="preset-btn" data-preset="neon">Neon</button>
-      <button class="preset-btn" data-preset="glass">Glass</button>
-      <button class="preset-btn" data-preset="compact">Compact</button>
-    </div>
-    <div class="spacer"></div>
-    <button class="btn btn-small" id="importBtn">Import</button>
-    <button class="btn btn-small" id="exportBtn">Export</button>
-    <button class="btn btn-small" id="advancedToggle">Show advanced</button>
-  </div>
-
-  <input type="file" id="importFile" accept=".json" class="hidden-file-input" />
-
-  <!-- Layout -->
-  <div class="section">
-    <div class="section-title">Layout</div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Overlay width</div>
-        <div class="row-desc">Width of the pill in pixels</div>
-      </div>
-      <div class="row-right">
-        <input type="number" id="overlayWidth" min="280" max="900" step="10" />
-        <span class="range-val">px</span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Corner radius</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="pillRadius" min="0" max="40" step="1" />
-        <span class="range-val" data-for="pillRadius"></span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Album art size</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="artSize" min="32" max="100" step="2" />
-        <span class="range-val" data-for="artSize"></span>
-      </div>
-    </div>
-
-    <div class="row advanced-row">
-      <div class="row-left">
-        <div class="row-label">Art corner radius</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="artRadius" min="0" max="50" step="1" />
-        <span class="range-val" data-for="artRadius"></span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Colors -->
-  <div class="section">
-    <div class="section-title">Colors</div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Accent color mode</div>
-        <div class="row-desc">Auto picks the dominant color from the album art</div>
-      </div>
-      <div class="row-right">
-        <select id="accentColorMode">
-          <option value="auto">Auto (from cover art)</option>
-          <option value="fixed">Fixed color</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="row" id="fixedColorRow">
-      <div class="row-left">
-        <div class="row-label">Fixed accent color</div>
-      </div>
-      <div class="row-right">
-        <input type="color" id="accentColorFixed" />
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Text color</div>
-      </div>
-      <div class="row-right">
-        <input type="color" id="textColor" />
-      </div>
-    </div>
-
-    <div class="row advanced-row">
-      <div class="row-left">
-        <div class="row-label">Background</div>
-        <div class="row-desc">Pill background (rgba format)</div>
-      </div>
-      <div class="row-right">
-        <div>
-          <input type="text" id="pillBackground" class="wide" />
-          <div class="validation-hint">Use rgba(r, g, b, a) format</div>
+  <div class="workspace">
+    <aside class="preview-column">
+      <section class="panel">
+        <div class="panel-head"><div><h2>Live preview</h2><p>Test the overlay against common scene backgrounds.</p></div><div id="backgrounds" class="preview-toolbar"><button class="chip active" data-bg="dark">Dark</button><button class="chip" data-bg="light">Light</button><button class="chip" data-bg="colorful">Colorful</button><button class="chip" data-bg="gameplay">Gameplay</button><button class="chip" data-bg="grid">Grid</button></div></div>
+        <div id="previewStage" class="preview-stage dark"><div id="previewViewport" class="preview-viewport"><iframe id="previewFrame" src="overlay.html?debug&preview" title="Overlay preview"></iframe></div></div>
+        <div class="preview-footer">
+          <button class="chip active" data-state="playing">Playing</button><button class="chip" data-state="paused">Paused</button><button class="chip" data-state="idle">Idle</button><button class="chip" data-state="nocover">No cover</button><button class="chip" data-state="long">Long title</button><button id="trackChange" class="chip">Track change</button><button id="dataButton" class="chip">Preview data</button>
+          <span class="spacer"></span><label class="viewport-input">OBS W <input id="previewObsWidth" type="number" min="200" max="1920" value="472"></label><label class="viewport-input">H <input id="previewObsHeight" type="number" min="80" max="1080" value="122"></label>
         </div>
-      </div>
-    </div>
+        <div id="dataPopover" class="data-popover hidden"><h3>Preview data</h3><input id="previewTitle" type="text" value="Blinding Lights" placeholder="Title"><input id="previewArtist" type="text" value="The Weeknd" placeholder="Artist"><input id="previewAlbum" type="text" value="After Hours" placeholder="Album"><div id="coverDrop" class="cover-drop">Drop or choose a cover image<input id="coverFile" class="hidden" type="file" accept="image/*"></div></div>
+      </section>
+      <div id="clipAlert" class="clip-alert hidden"></div>
+      <section class="panel obs-card"><div class="obs-grid"><div><div class="section-kicker">OBS Browser Source</div><div class="obs-url obs-url-text"></div></div><div id="obsSize" class="obs-size"></div></div><div class="obs-actions"><button class="btn" data-copy="url">Copy URL</button><button class="btn" data-copy="width">Copy width</button><button class="btn" data-copy="height">Copy height</button><a class="btn" href="overlay.html?debug&demo" target="_blank">Open full preview</a></div></section>
+    </aside>
 
-    <div class="row advanced-row">
-      <div class="row-left">
-        <div class="row-label">Blur strength</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="blurStrength" min="0" max="60" step="2" />
-        <span class="range-val" data-for="blurStrength"></span>
-      </div>
-    </div>
+    <div class="editor-column">
+      <section class="panel preset-panel"><div class="preset-heading"><div><div class="section-kicker">Presets</div><h2 id="presetStatus">Core</h2></div><div><button id="savePreset" class="chip">Save custom</button><button id="renamePreset" class="chip hidden">Rename</button><button id="deletePreset" class="chip hidden">Delete</button></div></div><div id="presetGrid" class="preset-grid"></div></section>
+      <section class="panel tabs-panel">
+        <nav class="tabs"><button class="tab active" data-tab="appearance">Appearance</button><button class="tab" data-tab="layout">Layout</button><button class="tab" data-tab="content">Content</button><button class="tab" data-tab="behavior">Behavior</button><button class="tab" data-tab="advanced">Advanced</button></nav>
+        <div class="tab-actions"><button id="resetSection" class="chip">Reset section</button></div>
 
-    <div class="row advanced-row">
-      <div class="row-left">
-        <div class="row-label">Border color</div>
-        <div class="row-desc">Subtle border (rgba format)</div>
-      </div>
-      <div class="row-right">
-        <div>
-          <input type="text" id="borderColor" class="wide" />
-          <div class="validation-hint">Use rgba(r, g, b, a) format</div>
+        <div class="tab-page active" data-page="appearance">
+          <div class="group-title">Surface</div>
+          <div class="control-row"><div><div class="label">Background color</div><div class="hint">The base surface beneath cover colors.</div></div><div class="control"><input id="surfaceColor" type="color"></div></div>
+          <div class="control-row"><div><div class="label">Background opacity</div></div><div class="control"><input id="surfaceOpacity" type="range" min="0" max="1" step=".01"><span class="value" data-value="surfaceOpacity"></span></div></div>
+          <div class="control-row"><div><div class="label">Cover frosting</div><div class="hint">Adds a subtle cover based tint. It does not blur the OBS scene.</div></div><div class="control"><input id="frosting" type="range" min="0" max="1" step=".01"><span class="value" data-value="frosting"></span></div></div>
+          <div class="control-row"><div><div class="label">Accent color</div></div><div class="control"><select id="accentColorMode"><option value="auto">Automatic from cover</option><option value="fixed">Fixed</option></select><input id="accentColorFixed" type="color"></div></div>
+          <div class="control-row"><div><div class="label">Text color</div></div><div class="control"><input id="textColor" type="color"></div></div>
+          <div class="group-title">Depth and edge</div>
+          <div class="control-row"><div><div class="label">Border color</div></div><div class="control"><input id="borderColor" type="color"></div></div>
+          <div class="control-row"><div><div class="label">Border opacity</div></div><div class="control"><input id="borderOpacity" type="range" min="0" max="1" step=".01"><span class="value" data-value="borderOpacity"></span></div></div>
+          <div class="control-row"><div><div class="label">Border width</div></div><div class="control"><input id="borderWidth" type="range" min="0" max="4" step=".5"><span class="value" data-value="borderWidth"></span></div></div>
+          <div class="control-row"><div><div class="label">Shadow</div></div><div class="control"><input id="shadowStrength" type="range" min="0" max="1" step=".01"><span class="value" data-value="shadowStrength"></span></div></div>
+          <div class="control-row"><div><div class="label">Accent glow</div></div><div class="control"><input id="glowStrength" type="range" min="0" max="1" step=".01"><span class="value" data-value="glowStrength"></span></div></div>
         </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Typography -->
-  <div class="section advanced">
-    <div class="section-title">Typography</div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Title size</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="titleSize" min="10" max="32" step="0.5" />
-        <span class="range-val" data-for="titleSize"></span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Artist size</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="artistSize" min="9" max="24" step="0.5" />
-        <span class="range-val" data-for="artistSize"></span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Artist opacity</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="artistOpacity" min="0.1" max="1" step="0.05" />
-        <span class="range-val" data-for="artistOpacity"></span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Marquee speed</div>
-        <div class="row-desc">Pixels per second for scrolling long titles</div>
-      </div>
-      <div class="row-right">
-        <input type="range" id="marqueeSpeed" min="10" max="80" step="2" />
-        <span class="range-val" data-for="marqueeSpeed"></span>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Font family</div>
-      </div>
-      <div class="row-right">
-        <div>
-          <input type="text" id="fontFamily" class="wide" />
-          <div class="validation-hint">Use a valid CSS font-family value</div>
+        <div class="tab-page" data-page="layout">
+          <div class="group-title">Browser Source fit</div>
+          <div class="control-row"><div><div class="label">Sizing mode</div><div class="hint">Fit uses the full Browser Source width. Fixed uses an exact pill width.</div></div><div class="control"><select id="sizeMode"><option value="fit">Fit to Browser Source</option><option value="fixed">Fixed size</option></select></div></div>
+          <div class="control-row"><div><div class="label">Fixed overlay width</div></div><div class="control"><input id="overlayWidth" type="range" min="280" max="900" step="10"><span class="value" data-value="overlayWidth"></span></div></div>
+          <div class="control-row"><div><div class="label">Pill radius</div></div><div class="control"><input id="pillRadius" type="range" min="0" max="40" step="1"><span class="value" data-value="pillRadius"></span></div></div>
+          <div class="group-title">Album art</div>
+          <div class="control-row"><div><div class="label">Cover size</div></div><div class="control"><input id="artSize" type="range" min="32" max="100" step="2"><span class="value" data-value="artSize"></span></div></div>
+          <div class="control-row"><div><div class="label">Cover radius</div></div><div class="control"><input id="artRadius" type="range" min="0" max="50" step="1"><span class="value" data-value="artRadius"></span></div></div>
+          <div class="group-title">Typography</div>
+          <div class="control-row"><div><div class="label">Font</div></div><div class="control"><select id="fontPreset"><option value="segoe">Segoe UI</option><option value="inter">Inter</option><option value="arial">Arial</option><option value="georgia">Georgia</option><option value="mono">Monospace</option><option value="custom">Custom</option></select></div></div>
+          <div id="customFontRow" class="control-row"><div><div class="label">Custom font family</div></div><div class="control"><input id="customFontFamily" type="text"></div></div>
+          <div class="control-row"><div><div class="label">Title size</div></div><div class="control"><input id="titleSize" type="range" min="10" max="32" step=".5"><span class="value" data-value="titleSize"></span></div></div>
+          <div class="control-row"><div><div class="label">Artist size</div></div><div class="control"><input id="artistSize" type="range" min="9" max="24" step=".5"><span class="value" data-value="artistSize"></span></div></div>
+          <div class="control-row"><div><div class="label">Artist opacity</div></div><div class="control"><input id="artistOpacity" type="range" min=".1" max="1" step=".05"><span class="value" data-value="artistOpacity"></span></div></div>
         </div>
-      </div>
+
+        <div class="tab-page" data-page="content">
+          <div class="group-title">Elements</div>
+          <div class="control-row"><div><div class="label">Show album art</div></div><div class="control"><label class="toggle"><input id="showAlbumArt" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Show equalizer and pause icon</div></div><div class="control"><label class="toggle"><input id="showEqualizer" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Show artist</div></div><div class="control"><label class="toggle"><input id="showArtist" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Show album in artist line</div></div><div class="control"><label class="toggle"><input id="showAlbumInArtist" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Track progress</div></div><div class="control"><select id="progressStyle"><option value="off">Off</option><option value="accent">Accent line</option><option value="minimal">Minimal</option><option value="time">Line with time</option></select></div></div>
+        </div>
+
+        <div class="tab-page" data-page="behavior">
+          <div class="group-title">Motion</div>
+          <div class="control-row"><div><div class="label">Track change animation</div></div><div class="control"><select id="animationStyle"><option value="smooth">Smooth</option><option value="slide">Slide</option><option value="minimal">Minimal</option><option value="none">None</option></select></div></div>
+          <div class="control-row"><div><div class="label">Marquee speed</div><div class="hint">Long titles pause, scroll to the end, pause, and reset.</div></div><div class="control"><input id="marqueeSpeed" type="range" min="10" max="80" step="2"><span class="value" data-value="marqueeSpeed"></span></div></div>
+          <div class="group-title">Visibility</div>
+          <div class="control-row"><div><div class="label">Hide when paused</div></div><div class="control"><label class="toggle"><input id="hideWhenPaused" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Dim when paused</div></div><div class="control"><label class="toggle"><input id="dimWhenPaused" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Hide when idle</div></div><div class="control"><label class="toggle"><input id="hideWhenIdle" type="checkbox"><span></span></label></div></div>
+          <div class="group-title">Media source</div>
+          <div class="control-row"><div><div class="label">Selection</div><div class="hint">Prefer Spotify avoids a browser tab taking over your overlay.</div></div><div class="control"><select id="mediaSourceMode"><option value="auto">Auto</option><option value="preferSpotify">Prefer Spotify, otherwise Auto</option><option value="specific">Specific source</option></select></div></div>
+          <div id="selectedSourceRow" class="control-row"><div><div class="label">Media source</div><div id="sourceWarning" class="hint hidden"></div></div><div class="control"><select id="selectedMediaSource"><option value="">No source detected</option></select></div></div>
+          <div class="control-row"><div><div class="label">Ignored sources</div><div class="hint">Checked sources are never selected.</div></div><div class="control"><div id="ignoredSources" class="source-list"><span class="hint">No sources detected yet.</span></div></div></div>
+        </div>
+
+        <div class="tab-page" data-page="advanced">
+          <div class="group-title">Application</div>
+          <div class="control-row"><div><div class="label">Start with Windows</div></div><div class="control"><label class="toggle"><input id="startWithWindows" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Open settings on launch</div></div><div class="control"><label class="toggle"><input id="openSettingsOnLaunch" type="checkbox"><span></span></label></div></div>
+          <div class="control-row"><div><div class="label">Surface grain</div></div><div class="control"><input id="noiseStrength" type="range" min="0" max=".2" step=".005"><span class="value" data-value="noiseStrength"></span></div></div>
+          <div class="group-title">Custom CSS</div>
+          <textarea id="customCss" placeholder=".overlay { /* advanced overrides */ }"></textarea>
+          <div class="notice">Custom CSS is applied only to the overlay. Invalid rules are ignored by the browser.</div>
+          <div class="group-title" id="updates">Updates and files</div>
+          <div id="updateStatus" class="notice">Current version: checking...</div>
+          <details id="releaseNotesBox" class="notice hidden"><summary>Release notes</summary><pre id="releaseNotes" class="release-notes"></pre></details>
+          <div class="advanced-actions"><button id="checkUpdate" class="btn">Check for updates</button><button id="applyUpdate" class="btn primary hidden">Update and restart</button><a id="releaseLink" class="btn hidden" target="_blank" rel="noopener">Open release</a><button id="importBtn" class="btn">Import settings and presets</button><button id="exportBtn" class="btn">Export settings and presets</button><a class="btn" href="status.html" target="_blank">Detailed diagnostics</a><button id="openDataFolder" class="btn">Open data folder</button><input id="importFile" class="hidden" type="file" accept=".json,application/json"></div>
+        </div>
+      </section>
     </div>
   </div>
+</main>
 
-  <!-- Visibility -->
-  <div class="section">
-    <div class="section-title">Visibility</div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Show album art</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="showAlbumArt" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Show equalizer / pause icon</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="showEqualizer" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Show artist</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="showArtist" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Show album in artist line</div>
-        <div class="row-desc">Shows "Artist / Album" when available</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="showAlbumInArtist" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Hide when paused</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="hideWhenPaused" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-
-    <div class="row advanced-row">
-      <div class="row-left">
-        <div class="row-label">Dim when paused</div>
-        <div class="row-desc">Reduce opacity instead of hiding (only when hide-on-pause is off)</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="dimWhenPaused" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-
-    <div class="row">
-      <div class="row-left">
-        <div class="row-label">Hide when nothing playing</div>
-      </div>
-      <label class="toggle">
-        <input type="checkbox" id="hideWhenIdle" />
-        <span class="toggle-track"></span>
-      </label>
-    </div>
-  </div>
-
-  <!-- Actions -->
-  <div class="actions">
-    <button class="btn btn-primary" id="saveBtn">Save settings</button>
-    <span class="dirty-badge" id="dirtyBadge">Unsaved changes</span>
-    <div class="spacer" style="flex:1"></div>
-    <button class="btn" id="revertBtn">Revert</button>
-    <button class="btn" id="resetBtn">Reset to defaults</button>
-  </div>
-
-  <div class="nav-links">
-    <a href="status.html">Diagnostics</a>
-    <a href="overlay.html?debug">Preview overlay</a>
-  </div>
-</div>
-
-<div class="toast" id="toast">Settings saved</div>
+<div id="toast" class="toast"></div>
 
 <script>
 (() => {
-  "use strict";
-
-  const DEFAULTS = {
-    overlayWidth: 440,
-    pillRadius: 18,
-    pillBackground: "rgba(10, 10, 18, 0.58)",
-    blurStrength: 28,
-    borderColor: "rgba(255, 255, 255, 0.07)",
-    textColor: "#ffffff",
-    artistOpacity: 0.50,
-    titleSize: 16.5,
-    artistSize: 12.5,
-    artSize: 60,
-    artRadius: 12,
-    accentColorMode: "auto",
-    accentColorFixed: "#8264f0",
-    showAlbumArt: true,
-    showEqualizer: true,
-    showArtist: true,
-    showAlbumInArtist: true,
-    hideWhenPaused: false,
-    dimWhenPaused: false,
-    hideWhenIdle: true,
-    marqueeSpeed: 28,
-    fontFamily: "'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, sans-serif"
-  };
+  'use strict';
+  const $ = id => document.getElementById(id);
+  const URL_OVERLAY = location.origin + '/overlay.html';
+  let defaults = {}, layoutMetrics = {}, settings = {}, savedSettings = {}, fields = [], currentTab = 'appearance';
+  let saveTimer = null, initialized = false, statusData = null, previewCover = '', activePreset = 'core';
+  let customPresets = [];
+  let undoStack = [], lastUndoAt = 0;
 
   const PRESETS = {
-    default: { ...DEFAULTS },
-    minimal: {
-      ...DEFAULTS,
-      overlayWidth: 360,
-      pillRadius: 12,
-      artSize: 44,
-      artRadius: 8,
-      titleSize: 14,
-      artistSize: 11,
-      showEqualizer: false,
-      showAlbumInArtist: false,
-      blurStrength: 20,
-      pillBackground: "rgba(0, 0, 0, 0.65)"
-    },
-    neon: {
-      ...DEFAULTS,
-      overlayWidth: 460,
-      pillRadius: 22,
-      accentColorMode: "fixed",
-      accentColorFixed: "#00ffaa",
-      pillBackground: "rgba(0, 0, 0, 0.75)",
-      borderColor: "rgba(0, 255, 170, 0.15)",
-      blurStrength: 36,
-      titleSize: 17,
-      artistOpacity: 0.65
-    },
-    glass: {
-      ...DEFAULTS,
-      overlayWidth: 440,
-      pillRadius: 24,
-      pillBackground: "rgba(255, 255, 255, 0.06)",
-      borderColor: "rgba(255, 255, 255, 0.12)",
-      blurStrength: 40,
-      artRadius: 14,
-      artistOpacity: 0.55
-    },
-    compact: {
-      ...DEFAULTS,
-      overlayWidth: 320,
-      pillRadius: 14,
-      artSize: 40,
-      artRadius: 8,
-      titleSize: 13.5,
-      artistSize: 10.5,
-      showAlbumInArtist: false,
-      blurStrength: 22
-    }
+    core: {},
+    terminal: { overlayWidth: 360, pillRadius: 0, artRadius: 0, fontPreset: 'mono', accentColorFixed: '#39ff14', showAlbumArt: false, showEqualizer: false, progressStyle: 'minimal', glowStrength: .04 },
+    signal: { overlayWidth: 460, pillRadius: 0, accentColorMode: 'fixed', accentColorFixed: '#39ff14', surfaceColor: '#020202', surfaceOpacity: .96, borderColor: '#39ff14', borderOpacity: .7, glowStrength: .72, artistOpacity: .68 },
+    outline: { overlayWidth: 440, pillRadius: 0, surfaceColor: '#020202', surfaceOpacity: .52, frosting: 0, borderColor: '#ffffff', borderOpacity: .5, borderWidth: 1, shadowStrength: 0, glowStrength: 0, artRadius: 0 },
+    compact: { overlayWidth: 320, pillRadius: 0, artSize: 40, artRadius: 0, titleSize: 13.5, artistSize: 10.5, showAlbumInArtist: false, frosting: 0, shadowStrength: .08 }
   };
+  const TAB_FIELDS = {
+    appearance: ['surfaceColor','surfaceOpacity','frosting','accentColorMode','accentColorFixed','textColor','borderColor','borderOpacity','borderWidth','shadowStrength','glowStrength'],
+    layout: ['sizeMode','overlayWidth','pillRadius','artSize','artRadius','fontPreset','customFontFamily','titleSize','artistSize','artistOpacity'],
+    content: ['showAlbumArt','showEqualizer','showArtist','showAlbumInArtist','progressStyle'],
+    behavior: ['animationStyle','marqueeSpeed','hideWhenPaused','dimWhenPaused','hideWhenIdle','mediaSourceMode','selectedMediaSource','ignoredSources'],
+    advanced: ['startWithWindows','openSettingsOnLaunch','noiseStrength','customCss']
+  };
+  const $preview = () => $('previewFrame').contentWindow;
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const same = (a,b) => JSON.stringify(a) === JSON.stringify(b);
 
-  const FIELDS = Object.keys(DEFAULTS);
-  const BOOLEANS = FIELDS.filter(k => typeof DEFAULTS[k] === "boolean");
-  const NUMBERS = FIELDS.filter(k => typeof DEFAULTS[k] === "number");
+  function requiredSize(value = settings) {
+    const textHeight=value.titleSize*layoutMetrics.textLineHeight+(value.showArtist?layoutMetrics.artistGap+value.artistSize*layoutMetrics.textLineHeight:0);
+    const content=Math.max(value.showAlbumArt?value.artSize:0,textHeight,value.showEqualizer?layoutMetrics.equalizerHeight:0);
+    return { width: Math.ceil(value.overlayWidth+layoutMetrics.outerMargin*2), height: Math.ceil(content+layoutMetrics.outerMargin*2+layoutMetrics.overlayVerticalPadding+value.borderWidth*2) };
+  }
+  function label(name) { return name[0].toUpperCase() + name.slice(1); }
+  function showToast(message) { const toast=$('toast'); toast.textContent=message; toast.classList.add('show'); setTimeout(()=>toast.classList.remove('show'),1800); }
+  async function copy(text) { try { await navigator.clipboard.writeText(String(text)); showToast('Copied'); } catch { showToast('Could not copy'); } }
 
-  let savedSettings = { ...DEFAULTS };
-  let advancedMode = false;
-
-  const $ = id => document.getElementById(id);
-
-  // -- Validation -------------------------------------------------
-
-  function isValidRgba(val) {
-    if (!val) return true;
-    return /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+))?\s*\)$/.test(val.trim())
-      || /^#[0-9a-f]{3,8}$/i.test(val.trim());
+  function formatValue(key, value) {
+    if (['surfaceOpacity','frosting','borderOpacity','shadowStrength','glowStrength','artistOpacity'].includes(key)) return Math.round(value*100)+'%';
+    if (key==='noiseStrength') return Math.round(value*100)+'%';
+    if (key==='marqueeSpeed') return value+' px/s';
+    if (['overlayWidth','pillRadius','borderWidth','artSize','artRadius','titleSize','artistSize'].includes(key)) return value+' px';
+    return value;
   }
 
-  function isValidFont(val) {
-    if (!val) return true;
-    // Basic check: not empty and not obviously broken
-    return val.trim().length > 0 && !val.includes("{") && !val.includes("}");
-  }
-
-  function validateField(key, val) {
-    const el = $(key);
-    if (!el) return true;
-
-    let valid = true;
-    if (key === "pillBackground" || key === "borderColor") {
-      valid = isValidRgba(val);
-    } else if (key === "fontFamily") {
-      valid = isValidFont(val);
-    }
-
-    el.classList.toggle("invalid", !valid);
-    return valid;
-  }
-
-  function validateAll() {
-    const current = readUI();
-    let allValid = true;
-    for (const key of FIELDS) {
-      if (!validateField(key, current[key])) allValid = false;
-    }
-    return allValid;
-  }
-
-  // -- UI helpers -------------------------------------------------
-
-  function populateUI(s) {
-    for (const key of FIELDS) {
-      const el = $(key);
-      if (!el) continue;
-      if (BOOLEANS.includes(key)) {
-        el.checked = !!s[key];
-      } else if (el.type === "range" || el.type === "number") {
-        el.value = s[key];
-        const valEl = document.querySelector(`[data-for="${key}"]`);
-        if (valEl) valEl.textContent = s[key];
-      } else {
-        el.value = s[key];
-      }
-      // Clear validation state
-      el.classList.remove("invalid");
-    }
-    updateConditionalVisibility(s);
+  function fillUI(value) {
+    fields.forEach(key => {
+      const el=$(key); if (!el || key==='ignoredSources') return;
+      if (el.type==='checkbox') el.checked=!!value[key]; else el.value=value[key] ?? '';
+      const output=document.querySelector(`[data-value="${key}"]`); if (output) output.textContent=formatValue(key,value[key]);
+    });
+    updateConditionalUI();
   }
 
   function readUI() {
-    const out = {};
-    for (const key of FIELDS) {
-      const el = $(key);
-      if (!el) { out[key] = savedSettings[key] ?? DEFAULTS[key]; continue; }
-      if (BOOLEANS.includes(key)) {
-        out[key] = el.checked;
-      } else if (NUMBERS.includes(key)) {
-        out[key] = parseFloat(el.value);
-      } else {
-        out[key] = el.value;
-      }
-    }
-    return out;
-  }
-
-  function updateConditionalVisibility(s) {
-    $("fixedColorRow").style.display = s.accentColorMode === "fixed" ? "" : "none";
-  }
-
-  // -- Dirty state ------------------------------------------------
-
-  function isDirty() {
-    const current = readUI();
-    for (const key of FIELDS) {
-      if (current[key] !== savedSettings[key]) return true;
-    }
-    return false;
-  }
-
-  function updateDirtyBadge() {
-    $("dirtyBadge").classList.toggle("show", isDirty());
-  }
-
-  // -- Server communication ---------------------------------------
-
-  async function loadSettings() {
-    try {
-      const res = await fetch("settings.json?_=" + Date.now(), { cache: "no-store" });
-      if (res.ok) {
-        const saved = await res.json();
-        savedSettings = { ...DEFAULTS, ...saved };
-      }
-    } catch { /* use defaults */ }
-    populateUI(savedSettings);
-    updateDirtyBadge();
-  }
-
-  async function saveToServer(data) {
-    try {
-      const res = await fetch("/save-settings", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data, null, 2)
-      });
-      return res.ok;
-    } catch {
-      return false;
-    }
-  }
-
-  function showToast(msg) {
-    const t = $("toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    setTimeout(() => t.classList.remove("show"), 2000);
-  }
-
-  // -- Live preview -----------------------------------------------
-
-  function liveUpdate() {
-    const current = readUI();
-    updateConditionalVisibility(current);
-    updateDirtyBadge();
-
-    const iframe = $("previewFrame");
-    if (iframe && iframe.contentWindow) {
-      iframe.contentWindow.postMessage({ type: "settings-update", settings: current }, "*");
-    }
-  }
-
-  // -- Wire inputs ------------------------------------------------
-
-  function wireInputs() {
-    for (const key of FIELDS) {
-      const el = $(key);
-      if (!el) continue;
-      const ev = (el.type === "range" || el.type === "checkbox") ? "input" : "change";
-      el.addEventListener(ev, () => {
-        if (el.type === "range") {
-          const valEl = document.querySelector(`[data-for="${key}"]`);
-          if (valEl) valEl.textContent = el.value;
-        }
-        validateField(key, el.type === "checkbox" ? el.checked : el.value);
-        liveUpdate();
-      });
-    }
-  }
-
-  // -- Presets ----------------------------------------------------
-
-  document.querySelectorAll("[data-preset]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const name = btn.dataset.preset;
-      const preset = PRESETS[name];
-      if (!preset) return;
-      populateUI(preset);
-      liveUpdate();
-      showToast("Preset: " + name + " (click Save to keep)");
+    const value={...settings};
+    fields.forEach(key => {
+      const el=$(key); if (!el || key==='ignoredSources') return;
+      if (el.type==='checkbox') value[key]=el.checked;
+      else if (el.type==='range'||el.type==='number') value[key]=Number(el.value);
+      else value[key]=el.value;
     });
-  });
+    value.ignoredSources=[...document.querySelectorAll('[data-ignore-source]:checked')].map(el=>el.dataset.ignoreSource);
+    value.settingsVersion=defaults.settingsVersion;
+    return value;
+  }
 
-  // -- Import / Export --------------------------------------------
+  function updateConditionalUI() {
+    $('accentColorFixed').classList.toggle('hidden',$('accentColorMode').value!=='fixed');
+    $('customFontRow').classList.toggle('hidden',$('fontPreset').value!=='custom');
+    $('selectedSourceRow').classList.toggle('hidden',$('mediaSourceMode').value!=='specific');
+    $('overlayWidth').disabled=$('sizeMode').value==='fit';
+  }
 
-  $("exportBtn").addEventListener("click", () => {
-    const data = readUI();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "nowplaying-settings.json";
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast("Settings exported");
-  });
+  function pushUndo(previous) {
+    const now=Date.now();
+    if (now-lastUndoAt>500 || !undoStack.length) { undoStack.push(clone(previous)); if (undoStack.length>30) undoStack.shift(); lastUndoAt=now; }
+    $('undoBtn').disabled=!undoStack.length;
+  }
 
-  $("importBtn").addEventListener("click", () => {
-    $("importFile").click();
-  });
+  function applyLocal(next, {save=true, record=true}={}) {
+    if (record && !same(next,settings)) pushUndo(settings);
+    settings={...defaults,...next};
+    fillUI(settings); updatePreview(); updateObsCard(); updatePresetState();
+    if (save) scheduleSave();
+  }
 
-  $("importFile").addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const imported = JSON.parse(reader.result);
-        const merged = { ...DEFAULTS, ...imported };
-        populateUI(merged);
-        liveUpdate();
-        showToast("Settings imported (click Save to keep)");
-      } catch {
-        showToast("Invalid JSON file");
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = "";
-  });
+  function scheduleSave() {
+    if (!initialized) return;
+    clearTimeout(saveTimer); $('saveState').className='save-state'; $('saveState').textContent='Unsaved';
+    saveTimer=setTimeout(saveNow,450);
+  }
 
-  // -- Advanced mode toggle ---------------------------------------
+  async function saveNow() {
+    clearTimeout(saveTimer); settings=readUI(); $('saveState').textContent='Saving...';
+    try {
+      const response=await fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(settings)});
+      const result=await response.json(); if (!response.ok) throw new Error(result.error||'Save failed');
+      settings={...defaults,...result.settings}; savedSettings=clone(settings);
+      $('saveState').className='save-state saved'; $('saveState').textContent='Saved';
+      if (result.warning) showToast(result.warning);
+      return true;
+    } catch (error) { $('saveState').className='save-state error'; $('saveState').textContent='Save failed'; showToast(error.message||'Save failed'); return false; }
+  }
 
-  $("advancedToggle").addEventListener("click", () => {
-    advancedMode = !advancedMode;
-    document.body.classList.toggle("show-advanced", advancedMode);
-    $("advancedToggle").textContent = advancedMode ? "Hide advanced" : "Show advanced";
-  });
+  function updatePreview() {
+    if (!$preview()) return;
+    $preview().postMessage({type:'settings-update',settings},'*');
+    const data={title:$('previewTitle').value,artist:$('previewArtist').value,album:$('previewAlbum').value,status:'playing',source:'Preview',hasCover:!!previewCover,coverDataUrl:previewCover,position:82,duration:200,timelineTs:Date.now()/1000};
+    $preview().postMessage({type:'preview-data',data},'*');
+    $preview().postMessage({type:'preview-background',background:document.querySelector('[data-bg].active')?.dataset.bg||'dark'},'*');
+    setPreviewViewport();
+  }
 
-  // -- Save / Revert / Reset buttons -----------------------------
+  function setPreviewViewport() {
+    const width=Math.max(200,Number($('previewObsWidth').value)||472), height=Math.max(80,Number($('previewObsHeight').value)||122);
+    const maxWidth=Math.max(260,$('previewStage').clientWidth-44), scale=Math.min(1,maxWidth/width);
+    const viewport=$('previewViewport'); viewport.style.width=width+'px'; viewport.style.height=height+'px'; viewport.style.transform=`scale(${scale})`; viewport.style.margin=`${-(height*(1-scale))/2}px ${-(width*(1-scale))/2}px`;
+    const required=requiredSize(), clipping=(settings.sizeMode==='fixed'&&width<required.width)||height<required.height;
+    $('clipAlert').classList.toggle('hidden',!clipping);
+    $('clipAlert').textContent=`Clipping warning: this preview viewport is ${width} x ${height}, but the current design needs ${required.width} x ${required.height}.`;
+  }
 
-  $("saveBtn").addEventListener("click", async () => {
-    if (!validateAll()) {
-      showToast("Fix the highlighted fields first");
-      return;
-    }
-    const data = readUI();
-    const ok = await saveToServer(data);
-    if (ok) {
-      savedSettings = { ...data };
-      updateDirtyBadge();
-      showToast("Settings saved");
-    } else {
-      showToast("Failed to save. Is the server running?");
-    }
-  });
+  function updateObsCard() {
+    const size=requiredSize();
+    document.querySelectorAll('.obs-url-text').forEach(el=>el.textContent=URL_OVERLAY);
+    $('obsSize').innerHTML=settings.sizeMode==='fit' ? `Fit x ${size.height}<small>minimum height</small>` : `${size.width} x ${size.height}<small>required width and height</small>`;
+    $('wizardWidth').textContent=size.width; $('wizardHeight').textContent=size.height;
+  }
 
-  $("revertBtn").addEventListener("click", () => {
-    populateUI(savedSettings);
-    liveUpdate();
-    showToast("Reverted to last saved state");
-  });
+  function customPreset(key) { return key.startsWith('custom:') ? customPresets.find(item=>item.id===key.slice(7)) : null; }
+  function presetValue(name) { return {...defaults,...(PRESETS[name]||customPreset(name)?.settings||{})}; }
+  function presetLabel(name) { return customPreset(name)?.name || label(name); }
+  function styleSlice(value) { const keys=[...TAB_FIELDS.appearance,...TAB_FIELDS.layout,...TAB_FIELDS.content,...TAB_FIELDS.behavior.filter(k=>!['mediaSourceMode','selectedMediaSource','ignoredSources'].includes(k))]; return Object.fromEntries(keys.map(k=>[k,value[k]])); }
+  function updatePresetState() {
+    let exact=''; [...Object.keys(PRESETS),...customPresets.map(item=>'custom:'+item.id)].some(name=>{ if (same(styleSlice(settings),styleSlice(presetValue(name)))) { exact=name; return true; } return false; });
+    if (exact) activePreset=exact;
+    document.querySelectorAll('.preset-card').forEach(card=>card.classList.toggle('active',card.dataset.preset===activePreset));
+    const modified=!same(styleSlice(settings),styleSlice(presetValue(activePreset)));
+    $('presetStatus').textContent=presetLabel(activePreset)+(modified?' / Modified':'');
+    const isCustom=!!customPreset(activePreset); $('renamePreset').classList.toggle('hidden',!isCustom); $('deletePreset').classList.toggle('hidden',!isCustom);
+  }
 
-  $("resetBtn").addEventListener("click", () => {
-    populateUI(DEFAULTS);
-    liveUpdate();
-    showToast("Reset to defaults (click Save to keep)");
-  });
+  function renderPresets() {
+    const names=[...Object.keys(PRESETS),...customPresets.map(item=>'custom:'+item.id)];
+    const markup=names.map(name=>`<button class="preset-card" data-preset="${name}"><span class="preset-mini"><i></i><b></b></span><span class="preset-name">${escapeHtml(presetLabel(name))}</span></button>`).join('');
+    $('presetGrid').innerHTML=markup; $('wizardPresets').innerHTML=Object.keys(PRESETS).slice(0,5).map(name=>`<button class="chip" data-wizard-preset="${name}">${label(name)}</button>`).join('');
+    document.querySelectorAll('[data-preset]').forEach(card=>card.onclick=()=>{ activePreset=card.dataset.preset; applyLocal({...settings,...styleSlice(presetValue(activePreset))}); });
+    document.querySelectorAll('[data-wizard-preset]').forEach(card=>card.onclick=()=>{ activePreset=card.dataset.wizardPreset; applyLocal({...settings,...styleSlice(presetValue(activePreset))}); });
+    updatePresetState();
+  }
 
-  // -- Init -------------------------------------------------------
-  wireInputs();
-  loadSettings();
+  async function storeCustomPresets() {
+    const response=await fetch('/api/presets',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({presets:customPresets})});
+    const result=await response.json(); if(!response.ok)throw new Error(result.error||'Preset save failed'); customPresets=result.presets||[]; renderPresets();
+  }
+
+  function renderSources(sources=[]) {
+    const selected=$('selectedMediaSource'), old=settings.selectedMediaSource;
+    const missing=!!old&&!sources.includes(old);
+    const ignored=!!old&&settings.ignoredSources.includes(old);
+    selected.innerHTML=(missing?`<option value="${escapeHtml(old)}">${escapeHtml(old)} (not available)</option>`:'')+(sources.length?sources.map(source=>`<option value="${escapeHtml(source)}">${escapeHtml(source)}</option>`).join(''):'<option value="">No source detected</option>');
+    if (old) selected.value=old;
+    $('sourceWarning').textContent=ignored?'The selected source is also ignored. Remove it from Ignored sources or choose another source.':missing?'The selected source is not currently available. Start playback there or choose another source.':''; $('sourceWarning').classList.toggle('hidden',!missing&&!ignored);
+    $('ignoredSources').innerHTML=sources.length?sources.map(source=>`<div class="source-item"><span>${escapeHtml(source)}</span><label>Ignore <input type="checkbox" data-ignore-source="${escapeHtml(source)}" ${settings.ignoredSources.includes(source)?'checked':''}></label></div>`).join(''):'<span class="hint">No sources detected yet.</span>';
+    document.querySelectorAll('[data-ignore-source]').forEach(el=>el.onchange=handleInput);
+  }
+  function escapeHtml(value) { const div=document.createElement('div'); div.textContent=value; return div.innerHTML; }
+
+  function handleInput(event) {
+    const previous=clone(settings), el=event.currentTarget;
+    const output=document.querySelector(`[data-value="${el.id}"]`); if(output) output.textContent=formatValue(el.id,Number(el.value));
+    settings=readUI(); if (!same(previous,settings)) pushUndo(previous);
+    updateConditionalUI(); updatePreview(); updateObsCard(); updatePresetState(); scheduleSave();
+  }
+
+  function wireUI() {
+    fields.forEach(key=>{ const el=$(key); if (!el||key==='ignoredSources') return; el.addEventListener(el.type==='text'||el.tagName==='TEXTAREA'?'input':'change',handleInput); if(el.type==='range') el.addEventListener('input',handleInput); });
+    document.querySelectorAll('.tab').forEach(tab=>tab.onclick=()=>{ currentTab=tab.dataset.tab; document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===tab)); document.querySelectorAll('.tab-page').forEach(x=>x.classList.toggle('active',x.dataset.page===currentTab)); });
+    document.querySelectorAll('[data-bg]').forEach(button=>button.onclick=()=>{ document.querySelectorAll('[data-bg]').forEach(x=>x.classList.toggle('active',x===button)); $('previewStage').className='preview-stage '+button.dataset.bg; $preview().postMessage({type:'preview-background',background:button.dataset.bg},'*'); });
+    document.querySelectorAll('[data-state]').forEach(button=>button.onclick=()=>{
+      document.querySelectorAll('[data-state]').forEach(x=>x.classList.toggle('active',x===button));
+      const state=button.dataset.state; let data={title:$('previewTitle').value,artist:$('previewArtist').value,album:$('previewAlbum').value,status:state==='paused'?'paused':state==='idle'?'none':'playing',hasCover:!!previewCover,coverDataUrl:previewCover,position:82,duration:200,timelineTs:Date.now()/1000};
+      if(state==='nocover') data={...data,hasCover:false,coverDataUrl:''};
+      if(state==='long') data={...data,title:'A Very Long Track Title That Tests How Calmly the Marquee Scrolls Across the Overlay'};
+      $preview().postMessage({type:'preview-state',data},'*');
+    });
+    $('trackChange').onclick=()=> $preview().postMessage({type:'simulate-track-change'},'*');
+    $('dataButton').onclick=()=>$('dataPopover').classList.toggle('hidden');
+    ['previewTitle','previewArtist','previewAlbum'].forEach(id=>$(id).addEventListener('input',updatePreview));
+    ['previewObsWidth','previewObsHeight'].forEach(id=>$(id).addEventListener('input',setPreviewViewport));
+    $('coverDrop').onclick=()=>$('coverFile').click(); $('coverDrop').ondragover=e=>e.preventDefault(); $('coverDrop').ondrop=e=>{e.preventDefault(); loadCoverFile(e.dataTransfer.files[0]);}; $('coverFile').onchange=e=>loadCoverFile(e.target.files[0]);
+    document.querySelectorAll('[data-copy]').forEach(button=>button.onclick=()=>{const size=requiredSize(),kind=button.dataset.copy; copy(kind==='url'?URL_OVERLAY:kind==='width'?size.width:kind==='height'?size.height:`${size.width} x ${size.height}`);});
+    $('undoBtn').onclick=()=>{ if(!undoStack.length)return; const previous=undoStack.pop(); $('undoBtn').disabled=!undoStack.length; applyLocal(previous,{record:false}); };
+    $('resetSection').onclick=()=>{const next={...settings}; TAB_FIELDS[currentTab].forEach(key=>next[key]=clone(defaults[key])); applyLocal(next); showToast('Section reset');};
+    $('savePreset').onclick=async()=>{const name=prompt('Name your custom preset'); if(!name||!name.trim())return; const id=crypto.randomUUID().toLowerCase(); customPresets.push({id,name:name.trim(),settings:styleSlice(settings)}); activePreset='custom:'+id; try{await storeCustomPresets();showToast('Custom preset saved');}catch(error){customPresets=customPresets.filter(item=>item.id!==id);showToast(error.message);}};
+    $('renamePreset').onclick=async()=>{const preset=customPreset(activePreset);if(!preset)return;const name=prompt('Rename custom preset',preset.name);if(!name||!name.trim())return;const previous=preset.name;preset.name=name.trim();try{await storeCustomPresets();showToast('Preset renamed');}catch(error){preset.name=previous;showToast(error.message);}};
+    $('deletePreset').onclick=async()=>{const preset=customPreset(activePreset);if(!preset||!confirm(`Delete custom preset "${preset.name}"?`))return;const previous=customPresets;customPresets=customPresets.filter(item=>item.id!==preset.id);activePreset='core';try{await storeCustomPresets();showToast('Preset deleted');}catch(error){customPresets=previous;activePreset='custom:'+preset.id;showToast(error.message);}};
+    $('statusButton').onclick=()=>$('diagnostics').classList.toggle('hidden');
+    $('restartDetector').onclick=async()=>{await fetch('/api/restart-detector',{method:'POST'}); showToast('Detector restart requested'); setTimeout(refreshStatus,700);};
+    $('dataPopover').onclick=e=>e.stopPropagation();
+    $('checkUpdate').onclick=checkUpdate;
+    $('applyUpdate').onclick=applyUpdate;
+    $('exportBtn').onclick=()=>{const payload={formatVersion:2,settings,customPresets};const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='nowplaying-settings-and-presets.json';a.click();URL.revokeObjectURL(url);};
+    $('importBtn').onclick=()=>$('importFile').click(); $('importFile').onchange=importSettings;
+    $('openDataFolder').onclick=async()=>{const response=await fetch('/api/open-data-folder',{method:'POST'});if(!response.ok)showToast('Could not open data folder');};
+    $('finishSetup').onclick=async()=>{settings.setupComplete=true;if(await saveNow()){$('wizard').classList.add('hidden');$('dashboard').classList.remove('hidden');updatePreview();}else{settings.setupComplete=false;showToast('Setup was not finished because settings could not be saved');}};
+    $('wizardTest').onclick=()=>{const demo=$('wizardDemo'),show=demo.classList.contains('hidden');demo.classList.toggle('hidden',!show);$('wizardTest').textContent=show?'Hide overlay test':'Test overlay';if(show)setTimeout(()=>{$('wizardTestFrame').contentWindow.postMessage({type:'settings-update',settings},'*');$('wizardTestFrame').contentWindow.postMessage({type:'simulate-track-change'},'*');},250);};
+    window.addEventListener('message',event=>{if(event.data?.type==='overlay-size') setPreviewViewport();});
+    window.addEventListener('resize',setPreviewViewport);
+  }
+
+  function loadCoverFile(file) { if(!file||!file.type.startsWith('image/'))return; const reader=new FileReader(); reader.onload=()=>{previewCover=reader.result;$('coverDrop').textContent=file.name;updatePreview();}; reader.readAsDataURL(file); }
+  async function importSettings(event) { const file=event.target.files[0]; if(!file)return; try {const imported=JSON.parse(await file.text()),bundle=imported?.formatVersion===2; if(bundle&&Array.isArray(imported.customPresets)){customPresets=imported.customPresets;await storeCustomPresets();} applyLocal({...defaults,...(bundle?imported.settings:imported)});showToast('Settings imported');}catch(error){showToast(error.message||'Invalid settings file');}event.target.value=''; }
+
+  async function refreshStatus() {
+    try {
+      const response=await fetch('/api/status?_='+Date.now(),{cache:'no-store'}); statusData=await response.json();
+      const state=statusData.detectorState, np=statusData.nowplaying||{}, detectorOnline=statusData.extractor, issue=['source_unavailable','detector_error','settings_invalid'].includes(state), ok=detectorOnline&&!issue;
+      $('statusDot').className='status-dot '+(ok?'ok':state==='no_media_session'?'':'bad');
+      $('statusText').textContent=(ok?(np.source?`${np.source} / ${label(np.status||state)}`:'Connected / No media session'):label(String(state).replaceAll('_',' ')))+` / v${statusData.version||'?'}`;
+      $('wizardMedia').className='wizard-status '+(detectorOnline?'good':''); $('wizardMedia').textContent=detectorOnline?(np.source?`${np.source} detected`:'Media detector connected'):'No active detector';
+      $('wizardMediaDetail').textContent=np.title?`${np.title} by ${np.artist}`:(statusData.detectorMessage||'Start playback in Spotify, Apple Music, or a browser.');
+      $('diagGrid').innerHTML=`<span>Server</span><b>Connected</b><span>Detector</span><b>${escapeHtml(state)}</b><span>Source</span><b>${escapeHtml(np.source||'None')}</b><span>Playback</span><b>${escapeHtml(np.status||'Idle')}</b><span>Version</span><b>${escapeHtml(statusData.version||'unknown')}</b>`;
+      renderSources(statusData.availableSources||np.availableSources||[]);
+    } catch { $('statusDot').className='status-dot bad'; $('statusText').textContent='Disconnected'; }
+  }
+
+  async function checkUpdate() {
+    $('updateStatus').textContent='Checking for updates...';
+    try {const response=await fetch('/api/update?_='+Date.now());const data=await response.json();if(!response.ok)throw new Error(data.error);$('updateStatus').textContent=data.updateAvailable?`Current ${data.current}. Version ${data.latest} is available.`:`Version ${data.current} is up to date.`;$('applyUpdate').classList.toggle('hidden',!data.updateAvailable||!data.automaticUpdate);if(data.releaseUrl){$('releaseLink').href=data.releaseUrl;$('releaseLink').classList.remove('hidden');}if(data.releaseNotes){$('releaseNotes').textContent=data.releaseNotes;$('releaseNotesBox').classList.remove('hidden');}} catch(error){$('updateStatus').textContent='Update check failed: '+error.message;}
+  }
+
+  async function applyUpdate() {
+    if (!confirm('Download the latest release, restart Now Playing, and keep your settings?')) return;
+    $('applyUpdate').disabled=true; $('updateStatus').textContent='Preparing update. The app will restart when it is complete.';
+    try {const response=await fetch('/api/apply-update',{method:'POST'});const data=await response.json();if(!response.ok)throw new Error(data.error);}
+    catch(error){$('applyUpdate').disabled=false;$('updateStatus').textContent='Update could not start: '+error.message;}
+  }
+
+  async function init() {
+    const [schemaResponse,settingsResponse,presetsResponse]=await Promise.all([fetch('settings.schema.json?_='+Date.now()),fetch('/api/settings?_='+Date.now()),fetch('/api/presets?_='+Date.now())]);
+    const schema=await schemaResponse.json(); defaults=schema.defaults; layoutMetrics=schema.layoutMetrics; settings={...defaults,...(await settingsResponse.json())}; customPresets=(await presetsResponse.json()).presets||[]; savedSettings=clone(settings); fields=Object.keys(defaults).filter(key=>!['settingsVersion','setupComplete'].includes(key));
+    fillUI(settings); renderPresets(); wireUI(); updateObsCard();
+    $('wizard').classList.toggle('hidden',settings.setupComplete); $('dashboard').classList.toggle('hidden',!settings.setupComplete);
+    initialized=true; $('saveState').className='save-state saved'; $('saveState').textContent='Saved';
+    $('previewFrame').addEventListener('load',()=>setTimeout(updatePreview,100));
+    setTimeout(updatePreview,120);
+    refreshStatus(); setInterval(refreshStatus,2500); setPreviewViewport(); checkUpdate();
+    if(location.hash==='#updates'){currentTab='advanced';document.querySelector('[data-tab="advanced"]').click();}
+  }
+  init().catch(error=>{document.body.innerHTML=`<main class="wizard"><section class="panel wizard-card"><h2>Settings could not load</h2><p>${escapeHtml(error.message)}</p></section></main>`;});
 })();
 </script>
 </body>

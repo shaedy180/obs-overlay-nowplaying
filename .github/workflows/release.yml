@@ -1,9 +1,12 @@
-name: Build and Release
+name: Build Windows executable
 
 on:
   push:
+    branches:
+      - master
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -18,17 +21,43 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+          cache: pip
 
       - name: Install dependencies
         run: |
+          python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pyinstaller
 
-      - name: Build exe
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Verify tag version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        run: |
+          $expected = "v$((python -c "from version import __version__; print(__version__)").Trim())"
+          if ($env:GITHUB_REF_NAME -ne $expected) {
+            throw "Tag $env:GITHUB_REF_NAME does not match version.py ($expected)"
+          }
+
+      - name: Build single-file EXE
         run: python build.py
 
-      - name: Upload release
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NowPlaying-Windows-${{ github.sha }}
+          path: |
+            dist/NowPlaying.exe
+            dist/NowPlaying.exe.sha256
+          if-no-files-found: error
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/NowPlaying.zip
+          files: |
+            dist/NowPlaying.exe
+            dist/NowPlaying.exe.sha256
           generate_release_notes: true

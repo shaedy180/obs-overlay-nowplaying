@@ -3,6 +3,8 @@ __pycache__/
 *.pyc
 nowplaying.json
 nowplaying.json.tmp
+heartbeat.json
+heartbeat.json.tmp
 cover.jpg
 cover.jpg.tmp
 settings.json
@@ -13,4 +15,5 @@ build/
 *.spec
 *.log
 *.exe
-.tmp_download.zip
+*.download
+*.backup

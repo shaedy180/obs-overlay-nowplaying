@@ -1,173 +1,165 @@
 # Now Playing for OBS
 
-A small "now playing" overlay for OBS that shows what you're listening to.
-It reads from Windows media controls, so it works with Spotify, Apple Music,
-browsers, and pretty much anything that shows up in the Windows volume flyout.
+Now Playing for OBS is a small Windows background app that displays the active media session in an OBS Browser Source. It supports Spotify, Apple Music, browsers, VLC, and other apps that use Windows media controls.
 
-![Glass pill overlay with album art, title, artist, and animated EQ bars](https://i.imgur.com/XejPv7Z.png)
+## Quick start
 
+1. Download `NowPlaying.exe` from the [latest release](https://github.com/shaedy180/obs-overlay-nowplaying/releases/latest).
+2. Double-click `NowPlaying.exe`. No installation or extraction is required.
+3. Complete the first-run setup.
+4. Add a Browser Source in OBS.
+5. Copy the URL, width, and height shown in the settings dashboard.
 
-## Quickstart (recommended)
+The default Browser Source values are:
 
-1. Download the latest `NowPlaying.zip` from
-   [Releases](https://github.com/shaedy180/obs-overlay-nowplaying/releases/latest).
-2. Extract the zip anywhere.
-3. Double-click `start.bat`.
-4. In OBS, add a **Browser Source** with URL `http://127.0.0.1:8000/overlay.html`,
-   width 480, height 120.  Done.
+```text
+URL:    http://127.0.0.1:8000/overlay.html
+Width:  472
+Height: 122
+```
 
-No Python, no terminal, no dependencies to install. The settings page opens
-automatically in your browser after launch.
+The dashboard recalculates the required dimensions when the overlay changes and warns if the preview viewport would clip it.
 
+`NowPlaying.exe` is a self-contained, windowed app. End users do not need Python, a terminal, a batch file, or files next to the EXE.
 
-## Updating
+## App behavior
 
-The tool includes a self-updater. Run `update.py` (or `start.bat --update`
-in the source version) to check for and download new releases. Your
-settings are preserved across updates.
+The app runs in the Windows notification area. Closing the settings browser tab does not stop it. The tray menu provides:
 
+- Open Settings
+- Copy OBS URL
+- Show Preview
+- Restart media detection
+- Check for updates
+- Quit
 
-## What it does
+Starting the EXE a second time opens the existing settings page without starting another server or media detector. If another application occupies port 8000, a clear Windows error dialog is shown.
 
-- Reads the currently playing track via the Windows GSMTC API (no Spotify
-  API key, no login, nothing to configure)
-- Shows title, artist, album art in a translucent glass pill
-- Pulls the accent color from the album cover automatically
-- Animated equalizer bars while playing, pause icon when paused
-- Scrolls long titles with a marquee
-- Crossfade animation on track changes
-- Built-in demo mode for setting things up without music playing
-- Presets for quick styling (Minimal, Neon, Glass, Compact)
-- Everything is configurable through a visual settings panel
+## Settings and user data
 
+Persistent data is stored per user at:
 
-## Requirements
+```text
+%LOCALAPPDATA%\NowPlayingOBS
+```
+
+This directory contains settings, custom presets, current media data, cover art, logs, update cache, and diagnostics heartbeat data. App updates never replace these files.
+
+If a previous version has `settings.json` next to the EXE, the first v2 start validates, migrates, and copies it into the new user data directory. Settings schema versions 1 and 2 are migrated to version 3.
+
+## Settings dashboard
+
+Open the dashboard at:
+
+```text
+http://127.0.0.1:8000/settings.html
+```
+
+It includes a sticky live preview, fixed and fit sizing modes, OBS size calculation, clipping checks, media source selection, immediate rendering, autosave, undo, section reset, diagnostics, import and export, and custom presets stored by the app.
+
+Preview backgrounds include dark, light, colorful, gameplay, and transparency grid. Test states include playing, paused, idle, no cover, long title, and track change. Preview metadata and cover uploads do not alter real media data.
+
+Only Finish setup completes the first-run wizard. Test overlay opens a demonstration and leaves setup active.
+
+## Media selection
+
+Windows may expose multiple media sessions. The detector supports:
+
+- Auto selection with stable preference for the current playing source
+- Prefer Spotify, otherwise Auto
+- A specific source
+- Ignored sources
+
+Playing sessions rank above paused sessions. A previously selected playing source remains stable when equivalent sessions are present. Missing specific sources and ignore conflicts are reported in the UI and diagnostics.
+
+## Overlay features
+
+- Album cover and optional cover-derived primary and secondary accents
+- Track progress with accent, minimal, and time modes
+- Separate cover and metadata motion for track changes
+- Smooth, Slide, Minimal, and None animation modes
+- Long-title marquee with pauses at both ends
+- Hide or dim on pause and hide on idle
+- Reduced-motion support
+- Custom CSS in Advanced settings
+- Core, Terminal, Signal, Outline, and Compact built-in presets
+
+The default product style is black, gray, and neon green with square geometry and restrained technical motion. Cover colors remain optional and are normalized for usable saturation and luminance.
+
+## Diagnostics
+
+The settings header shows current detector state, source, playback, and version. Detailed diagnostics are available at:
+
+```text
+http://127.0.0.1:8000/status.html
+```
+
+Heartbeat state distinguishes connected, no media session, missing specific source, stopped detector, unavailable GSMTC, detector errors, and invalid settings. Frozen builds write logs to `%LOCALAPPDATA%\NowPlayingOBS\logs\nowplaying.log`.
+
+## Updates
+
+The Advanced tab checks the latest GitHub release. A newer semantic version can be downloaded as the exact `NowPlaying.exe` asset. The updater verifies `NowPlaying.exe.sha256`, closes the current process, replaces the EXE, restarts it, and restores the previous executable if the new version does not become healthy.
+
+Settings and presets remain untouched because they live in the separate user data directory.
+
+## Development / Running from source
+
+Requirements:
 
 - Windows 10 or 11
-- OBS Studio (or anything with a browser source)
+- Python 3.10 or newer
+- OBS Studio for normal use
 
-If you use the standalone .exe release, that's all you need. For running
-from source you also need Python 3.10+.
+From the repository directory:
 
-
-## Running from source
-
-If you prefer running the Python source directly (for development or if you
-want to modify things):
-
-```
-# Option A: use the launcher
-# (creates venv, installs deps, starts everything)
+```bat
 start.bat
+```
 
-# Option B: manual setup
+The development launcher creates `venv`, installs dependencies, starts the combined app, and waits for the health endpoint. It is not part of the end-user release.
+
+Manual setup:
+
+```bat
 python -m venv venv
-venv\Scripts\pip install -r requirements.txt
-
-# Terminal 1: media extractor
-venv\Scripts\python nowplaying.py
-
-# Terminal 2: web server
-venv\Scripts\python server.py
+venv\Scripts\python.exe -m pip install -r requirements.txt
+venv\Scripts\python.exe app.py
 ```
 
+For server-only frontend work:
 
-## Building the .exe yourself
-
+```bat
+venv\Scripts\python.exe server.py
 ```
-pip install pyinstaller
-pip install -r requirements.txt
+
+Server-only mode serves the editor and demo preview but does not start GSMTC detection or the tray app.
+
+## Building the standalone app
+
+```bat
+python -m pip install pyinstaller
+python -m pip install -r requirements.txt
 python build.py
 ```
 
-This creates `dist/NowPlaying.zip` with the standalone build.
+The build creates exactly these release artifacts:
 
-
-## OBS setup
-
-1. Add a **Browser Source** in OBS.
-2. Set the URL to `http://127.0.0.1:8000/overlay.html`.
-3. Set width to **480** and height to **120** (adjust to taste).
-4. Optional: enable "Refresh browser when scene becomes active".
-5. The background is transparent, so the pill just sits on top of your scene.
-
-You can copy the URL directly from the diagnostics page at
-`http://127.0.0.1:8000/status.html`.
-
-
-## Settings
-
-Open `http://127.0.0.1:8000/settings.html` while the server is running.
-The page has a live preview at the top. Any change you make shows up
-immediately.
-
-You can tweak layout, colors, blur, typography, visibility, and more.
-There are built-in presets if you want a quick starting point, and you can
-import/export your settings as a JSON file.
-
-
-## Files
-
-| File              | What it does                                          |
-|-------------------|-------------------------------------------------------|
-| `NowPlaying.exe`  | Standalone build (in releases, runs server + extractor)|
-| `nowplaying.py`   | Polls Windows media controls, writes `nowplaying.json` and `cover.jpg` |
-| `server.py`       | Local HTTP server with no-cache headers and a settings save endpoint |
-| `app.py`          | Combined entry point used by PyInstaller               |
-| `overlay.html`    | The overlay (glass pill, EQ bars, crossfade, demo mode) |
-| `settings.html`   | Visual settings editor with live preview and presets  |
-| `status.html`     | Diagnostics page (health checks, OBS URL, last track) |
-| `settings.json`   | Your saved settings (auto-generated)                  |
-| `update.py`       | Self-updater, downloads latest release from GitHub    |
-| `build.py`        | Build script for creating the .exe with PyInstaller   |
-| `start.bat`       | One-click launcher (works with both .exe and source)  |
-| `version.txt`     | Current version number                                |
-| `requirements.txt`| Python dependencies (winrt packages, source only)     |
-
-
-## How it works
-
-`nowplaying.py` uses Python winrt bindings to talk to the Windows media
-session manager. Every half second it checks what's playing, writes the
-info to `nowplaying.json`, and saves the album art as `cover.jpg` when
-the track changes.
-
-`server.py` serves the project folder on localhost:8000 with no-cache
-headers. It also has a POST endpoint so the settings panel can save
-changes.
-
-`overlay.html` polls `nowplaying.json` every 500ms, updates the display,
-extracts the dominant color from the cover art, and handles all the
-animations. It picks up settings changes automatically.
-
-`settings.html` reads and writes settings through the server and pushes
-live updates to the preview iframe so you see changes before saving.
-
-
-## Troubleshooting
-
-**Nothing shows up in the overlay**
-Make sure something is actually playing. The overlay hides itself when
-idle. Check if `nowplaying.json` has data by opening
-`http://127.0.0.1:8000/nowplaying.json` in your browser, or check the
-diagnostics page at `http://127.0.0.1:8000/status.html`.
-
-**Album art is missing**
-Some apps don't provide album art through the Windows media API.
-The overlay shows a gradient placeholder in that case.
-
-**The extractor crashes on startup**
-If running from source, make sure the dependencies are installed:
+```text
+dist\NowPlaying.exe
+dist\NowPlaying.exe.sha256
 ```
-venv\Scripts\pip install -r requirements.txt
+
+The EXE uses PyInstaller one-file and windowed modes. HTML, schema, icon, Python modules, WinRT bindings, Pillow, and tray dependencies are embedded.
+
+## Tests
+
+Run the test suite from the repository directory:
+
+```bat
+python -m unittest discover -s tests -v
 ```
-If using the .exe release, try downloading the latest version from the
-releases page.
 
-**Port 8000 is already taken**
-Pass a different port: `venv\Scripts\python server.py 9000`, then update
-the OBS browser source URL to match.
-
+GitHub Actions runs the tests and build on pushes to `master`. Tagged releases also attach `NowPlaying.exe` and `NowPlaying.exe.sha256` directly to the GitHub release.
 
 ## License
 

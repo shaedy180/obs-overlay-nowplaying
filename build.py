@@ -1,105 +1,116 @@
-"""
-Build script - packages everything into a single .exe with PyInstaller.
+"""Build the self-contained Windows executable with PyInstaller."""
 
-Usage:
-    python build.py
+from __future__ import annotations
 
-Output:
-    dist/NowPlaying/  - folder with NowPlaying.exe and all needed files
-    dist/NowPlaying.zip - ready-to-distribute archive
-"""
-
-import os
-import shutil
+import hashlib
 import subprocess
 import sys
-import zipfile
+from pathlib import Path
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-
-# Files to bundle alongside the .exe
-DATA_FILES = [
-    "overlay.html",
-    "settings.html",
-    "status.html",
-    "update.py",
-    "version.txt",
-    "README.md",
-    "LICENSE",
-]
+from version import __version__
 
 
-def check_pyinstaller():
+ROOT = Path(__file__).resolve().parent
+DIST_EXE = ROOT / "dist" / "NowPlaying.exe"
+CHECKSUM_FILE = ROOT / "dist" / "NowPlaying.exe.sha256"
+RESOURCE_FILES = ["overlay.html", "settings.html", "status.html", "settings.schema.json"]
+
+
+def check_pyinstaller() -> None:
     try:
         import PyInstaller  # noqa: F401
     except ImportError:
-        print("PyInstaller not found. Installing ...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
 
 
-def build_exe():
-    print("Building NowPlaying.exe ...")
-    cmd = [
-        sys.executable, "-m", "PyInstaller",
+def _version_parts() -> tuple[int, int, int, int]:
+    values = tuple(int(part) for part in __version__.split("."))
+    if len(values) != 3:
+        raise ValueError("version.py must contain a three-part version")
+    return values + (0,)
+
+
+def write_version_metadata() -> Path:
+    parts = _version_parts()
+    path = ROOT / "build" / "windows-file-metadata.txt"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    dotted = ", ".join(str(value) for value in parts)
+    path.write_text(
+        f"""VSVersionInfo(
+  ffi=FixedFileInfo(filevers=({dotted}), prodvers=({dotted}), mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),
+  kids=[StringFileInfo([StringTable('040904B0', [
+    StringStruct('CompanyName', 'Now Playing for OBS'),
+    StringStruct('FileDescription', 'Now Playing overlay service for OBS'),
+    StringStruct('FileVersion', '{__version__}'),
+    StringStruct('InternalName', 'NowPlaying'),
+    StringStruct('OriginalFilename', 'NowPlaying.exe'),
+    StringStruct('ProductName', 'Now Playing for OBS'),
+    StringStruct('ProductVersion', '{__version__}')
+  ])]), VarFileInfo([VarStruct('Translation', [1033, 1200])])]
+)""",
+        encoding="utf-8",
+    )
+    return path
+
+
+def build_exe() -> Path:
+    version_file = write_version_metadata()
+    command = [
+        sys.executable,
+        "-m",
+        "PyInstaller",
         "--noconfirm",
-        "--name", "NowPlaying",
-        "--console",
-        "--icon", "NONE",
-        # Collect the winrt subpackages PyInstaller misses
-        "--collect-all", "winrt",
-        "--hidden-import", "winrt.windows.media.control",
-        "--hidden-import", "winrt.windows.storage.streams",
-        "--hidden-import", "winrt.windows.foundation",
-        "--hidden-import", "winrt.windows.foundation.collections",
-        "app.py",
+        "--clean",
+        "--name",
+        "NowPlaying",
+        "--onefile",
+        "--windowed",
+        "--icon",
+        str(ROOT / "assets" / "app-icon.ico"),
+        "--version-file",
+        str(version_file),
+        "--collect-all",
+        "winrt",
+        "--collect-all",
+        "pystray",
+        "--hidden-import",
+        "winrt.windows.media.control",
+        "--hidden-import",
+        "winrt.windows.storage.streams",
+        "--hidden-import",
+        "winrt.windows.system",
+        "--hidden-import",
+        "winrt.windows.foundation",
+        "--hidden-import",
+        "winrt.windows.foundation.collections",
     ]
-    subprocess.check_call(cmd, cwd=ROOT)
+    for name in RESOURCE_FILES:
+        command.extend(["--add-data", f"{ROOT / name};."])
+    command.extend(["--add-data", f"{ROOT / 'assets'};assets", str(ROOT / "app.py")])
+    subprocess.check_call(command, cwd=ROOT)
+    if not DIST_EXE.is_file() or DIST_EXE.stat().st_size < 1024:
+        raise RuntimeError("PyInstaller did not create dist/NowPlaying.exe")
+    with DIST_EXE.open("rb") as executable:
+        if executable.read(2) != b"MZ":
+            raise RuntimeError("Build output is not a Windows executable")
+    return DIST_EXE
 
 
-def copy_data_files():
-    dist_dir = os.path.join(ROOT, "dist", "NowPlaying")
-    print(f"Copying data files to {dist_dir} ...")
-    for fname in DATA_FILES:
-        src = os.path.join(ROOT, fname)
-        if os.path.isfile(src):
-            shutil.copy2(src, dist_dir)
-            print(f"  + {fname}")
-        else:
-            print(f"  - {fname} (not found, skipping)")
-
-    # Create a simple start.bat for the .exe version
-    bat = os.path.join(dist_dir, "start.bat")
-    with open(bat, "w") as f:
-        f.write('@echo off\r\n')
-        f.write('cd /d "%~dp0"\r\n')
-        f.write('start "" "http://127.0.0.1:8000/settings.html"\r\n')
-        f.write('NowPlaying.exe\r\n')
-    print("  + start.bat (generated)")
+def write_checksum(path: Path) -> Path:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    CHECKSUM_FILE.write_text(f"{digest.hexdigest()}  {path.name}\n", encoding="ascii")
+    return CHECKSUM_FILE
 
 
-def make_zip():
-    dist_dir = os.path.join(ROOT, "dist", "NowPlaying")
-    zip_path = os.path.join(ROOT, "dist", "NowPlaying.zip")
-    print(f"Creating {zip_path} ...")
-    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for dirpath, dirnames, filenames in os.walk(dist_dir):
-            for fname in filenames:
-                full = os.path.join(dirpath, fname)
-                arcname = os.path.join("NowPlaying", os.path.relpath(full, dist_dir))
-                zf.write(full, arcname)
-    size_mb = os.path.getsize(zip_path) / (1024 * 1024)
-    print(f"Done! {size_mb:.1f} MB")
-
-
-def main():
+def main() -> None:
     check_pyinstaller()
-    build_exe()
-    copy_data_files()
-    make_zip()
-    print()
-    print("Build complete. Output:")
-    print(f"  Folder: dist/NowPlaying/")
-    print(f"  ZIP:    dist/NowPlaying.zip")
+    executable = build_exe()
+    checksum = write_checksum(executable)
+    print(f"Built {executable}")
+    print(f"Checksum {checksum}")
 
 
 if __name__ == "__main__":
