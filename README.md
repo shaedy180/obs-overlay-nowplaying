@@ -171,3 +171,11 @@ MIT
 Read [AGENTS.md](AGENTS.md). Only `main` and `working-branch` are permanent: use one PR, passing build checks, a merge commit, then fast-forward synchronization. CI builds the Windows application with Python 3.12 and SHA256-locked dependencies from `requirements.lock`; regenerate that Windows-targeted lock with `uv pip compile --python-version 3.12 --python-platform x86_64-pc-windows-msvc --generate-hashes` after reviewing updates. Install with `python -m pip install --require-hashes -r requirements.lock`.
 
 GitHub builds upload revision-labelled artifacts; version tags publish releases only after successful packaging. Preserve existing local user data and the previous working executable when updating. Git history and recovery tags retain older source. This is a desktop application; no Docker/GHCR or VPS deployment is configured. Automated builds do not replace interactive Windows/media/graphics acceptance testing.
+
+## Efficient CI and verified releases
+
+Open a draft or ready PR from `working-branch` to `main` to run the complete validation suite. A push to `working-branch` alone does not start CI; use **Run workflow** for checks before opening a PR. New PR updates cancel obsolete runs for that PR. Main and release runs are never cancelled by a newer PR update.
+
+After every required PR job succeeds, **CI provenance** records the tested merge commit. On a `main` push, CI runs only a small verification gate: the latest matching PR run must be successful, its receipt must be current and unexpired, and its tested Git tree and both merge parents must exactly match the actual merge. Missing, failed, stale or mismatched evidence blocks release instead of silently skipping checks. Update the PR against current `main` and wait for all required checks before merging. If a receipt has expired, rerun the complete original PR workflow, then rerun the main gate.
+
+Release-specific builds, tag checks, immutable commit labels, publishing and deployment safeguards remain in place. Main publication starts only after the verification gate succeeds; the application test suite is not repeated after merge. Manual and tag/release validation remain available. Keep both the existing required checks and **CI provenance** required in branch protection.

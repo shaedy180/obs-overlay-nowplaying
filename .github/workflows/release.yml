@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - working-branch
     tags:
       - "v*"
   pull_request:
@@ -14,8 +13,13 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   build:
+    if: ${{ (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -56,7 +60,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: ${{ (startsWith(github.ref, 'refs/tags/v')) && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
     needs: build
     runs-on: ubuntu-latest
     permissions: {contents: write}
@@ -69,3 +73,35 @@ jobs:
             NowPlaying.exe
             NowPlaying.exe.sha256
           generate_release_notes: true
+
+  ci_provenance:
+    name: CI provenance
+    if: always()
+    needs: ["build", "release"]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@v6
+      - name: Test verification safeguards
+        run: node --test .github/scripts/ci-provenance.test.cjs
+      - name: Record PR validation or verify merged source
+        id: receipt
+        uses: actions/github-script@v8
+        env:
+          CI_JOB_RESULTS: ${{ toJSON(needs) }}
+          CI_REQUIRED_JOBS: '["build"]'
+        with:
+          script: |
+            await require('./.github/scripts/ci-provenance.cjs')({ github, context, core });
+      - name: Preserve successful PR validation receipt
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.receipt.outputs.artifact }}
+          path: ci-validation.json
+          if-no-files-found: error
+          retention-days: 90
