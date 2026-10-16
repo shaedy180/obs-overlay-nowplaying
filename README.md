@@ -164,3 +164,10 @@ GitHub Actions runs the tests and build on pushes to `master`. Tagged releases a
 ## License
 
 MIT
+
+
+## Repository, reproducible builds and recovery
+
+Read [AGENTS.md](AGENTS.md). Only `main` and `working-branch` are permanent: use one PR, passing build checks, a merge commit, then fast-forward synchronization. CI builds the Windows application with Python 3.12 and SHA256-locked dependencies from `requirements.lock`; regenerate that Windows-targeted lock with `uv pip compile --python-version 3.12 --python-platform x86_64-pc-windows-msvc --generate-hashes` after reviewing updates. Install with `python -m pip install --require-hashes -r requirements.lock`.
+
+GitHub builds upload revision-labelled artifacts; version tags publish releases only after successful packaging. Preserve existing local user data and the previous working executable when updating. Git history and recovery tags retain older source. This is a desktop application; no Docker/GHCR or VPS deployment is configured. Automated builds do not replace interactive Windows/media/graphics acceptance testing.
