@@ -58,6 +58,7 @@ jobs:
             dist/NowPlaying.exe
             dist/NowPlaying.exe.sha256
           if-no-files-found: error
+          retention-days: 7
 
   release:
     if: ${{ (startsWith(github.ref, 'refs/tags/v')) && (github.event_name != 'push' || github.ref != 'refs/heads/main') }}
@@ -104,4 +105,4 @@ jobs:
           name: ${{ steps.receipt.outputs.artifact }}
           path: ci-validation.json
           if-no-files-found: error
-          retention-days: 90
+          retention-days: 14
